@@ -30,7 +30,13 @@ import type {
 } from "@/domain/items/schemas";
 import { normalizeItemRow, safeNormalizeItemRow } from "@/domain/items/schemas";
 import type { UserSettingsDefaults } from "@/domain/settings/defaults";
-import { buildDefaultUserSettings } from "@/domain/settings/defaults";
+import {
+  buildDefaultUserSettings,
+  detectSupportedLanguage,
+  getDefaultDeviceTimeZone,
+  isUserSettingsDefaults,
+  isValidTimeZone,
+} from "@/domain/settings/defaults";
 import { isDateOnly, type DateOnly } from "@/domain/time/dateOnly";
 import { validateStatusTransition } from "@/domain/transitions/status";
 import type { ItemActionId } from "@/features/items/itemPresentation";
@@ -113,6 +119,8 @@ export type QuickAddInput = {
 
 export type AreaDeleteChoice = "area_only" | "area_and_items";
 
+export type UserSettingsInput = Partial<UserSettingsDefaults>;
+
 export type PlanningMutations = {
   archiveRejectedContext: (localMutationId: string) => void;
   classifyItem: (itemId: string, input: ClassificationInput) => MutationResult;
@@ -123,6 +131,7 @@ export type PlanningMutations = {
   getRejectedContextForRow: (rowId: string) => RejectedWriteContext | null;
   postponeItem: (itemId: string, input: PostponeInput) => MutationResult;
   runItemAction: (itemId: string, action: ItemActionId) => MutationResult;
+  updateSettings: (input: UserSettingsInput) => MutationResult;
 };
 
 export type MutationResult =
@@ -143,11 +152,14 @@ type PlanningAction =
   | { type: "deleteArea"; areaId: string; choice: AreaDeleteChoice; now: string }
   | { type: "editItem"; itemId: string; input: ItemEditorInput; now: string }
   | { type: "postponeItem"; itemId: string; input: PostponeInput; now: string }
-  | { type: "runItemAction"; itemId: string; action: ItemActionId; now: string };
+  | { type: "runItemAction"; itemId: string; action: ItemActionId; now: string }
+  | { type: "updateSettings"; input: UserSettingsInput; now: string };
 
 const USER_ID = "fixture-user";
 const DEVICE_ID = "fixture-device";
 const TODAY: DateOnly = "2026-06-14";
+const SETTINGS_STORAGE_KEY = "yasumi:user-settings";
+const SETTINGS_ROW_ID = "fixture-user-settings";
 
 const syncMetadata = {
   user_id: USER_ID,
@@ -455,6 +467,9 @@ export function PlanningDataProvider({ children }: PropsWithChildren) {
       runItemAction(itemId, action) {
         return commit({ type: "runItemAction", itemId, action, now: new Date().toISOString() });
       },
+      updateSettings(input) {
+        return commit({ type: "updateSettings", input, now: new Date().toISOString() });
+      },
     }),
     [commit, state.pendingMutations, state.rejectedWrites],
   );
@@ -541,7 +556,7 @@ export function buildInitialState(): PlanningState {
     pendingMutations: [],
     recurringTemplates: initialRecurringTemplates,
     rejectedWrites: [],
-    settings: buildDefaultUserSettings("en", "Asia/Tokyo"),
+    settings: getInitialUserSettings(),
     today: TODAY,
   };
 }
@@ -591,7 +606,59 @@ function reducePlanningState(
     return deleteArea(state, action.areaId, action.choice, action.now);
   }
 
+  if (action.type === "updateSettings") {
+    return updateSettings(state, action.input, action.now);
+  }
+
   return runItemAction(state, action.itemId, action.action, action.now);
+}
+
+function updateSettings(
+  state: PlanningState,
+  input: UserSettingsInput,
+  now: string,
+): { state: PlanningState; result: MutationResult } {
+  const candidateSettings = {
+    ...state.settings,
+    ...input,
+    date_display_format: "YYYY-MM-DD",
+    default_time_zone_mode: "floating",
+  };
+
+  if (!isUserSettingsDefaults(candidateSettings)) {
+    const candidateTimeZone =
+      typeof candidateSettings.time_zone === "string" ? candidateSettings.time_zone : "";
+    const error = validationError(
+      isValidTimeZone(candidateTimeZone)
+        ? { language: "invalid_setting" }
+        : { time_zone: "invalid_time_zone" },
+    );
+
+    return {
+      state: appendRejectedWrite(
+        state,
+        SETTINGS_ROW_ID,
+        "user_settings",
+        "settings_update",
+        error,
+        now,
+      ),
+      result: { ok: false, error },
+    };
+  }
+
+  const nextSettings: UserSettingsDefaults = candidateSettings;
+  persistUserSettings(nextSettings);
+  const mutation = buildMutation(state, SETTINGS_ROW_ID, "user_settings", "settings_update");
+
+  return {
+    state: {
+      ...state,
+      pendingMutations: [...state.pendingMutations, mutation],
+      settings: nextSettings,
+    },
+    result: { ok: true, mutation },
+  };
 }
 
 function createCapture(
@@ -1033,6 +1100,51 @@ function getOrCreateDeviceId(): string {
   const deviceId = createId("device");
   localStorage.setItem("yasumi:device-id", deviceId);
   return deviceId;
+}
+
+function getInitialUserSettings(): UserSettingsDefaults {
+  const stored = readStoredUserSettings();
+
+  if (stored) {
+    return stored;
+  }
+
+  const browserLanguage =
+    typeof navigator !== "undefined" ? (navigator.languages?.[0] ?? navigator.language) : "en";
+
+  return buildDefaultUserSettings(
+    detectSupportedLanguage(browserLanguage),
+    getDefaultDeviceTimeZone(),
+  );
+}
+
+function readStoredUserSettings(): UserSettingsDefaults | null {
+  if (typeof localStorage === "undefined") {
+    return null;
+  }
+
+  const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+
+  if (!stored) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(stored);
+
+    return isUserSettingsDefaults(parsed) ? parsed : null;
+  } catch {
+    localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    return null;
+  }
+}
+
+function persistUserSettings(settings: UserSettingsDefaults): void {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
 }
 
 export function buildOrdinaryActionKey(userId: string, deviceId: string, clientActionId: string) {

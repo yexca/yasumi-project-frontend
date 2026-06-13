@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 
 import { NAV_ITEMS, ROUTE_PATHS } from "@/app/router/routes";
+import { getDateOnlyInTimeZone } from "@/domain/time/dateOnly";
 import { QuickAddDialog } from "@/features/items/ItemDialogs";
 import { usePlanningData, useSyncUiState } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
@@ -12,7 +13,7 @@ import styles from "./AppShell.module.css";
 export function AppShell() {
   const { pathname } = useLocation();
   const { t } = useTranslation();
-  const { areas } = usePlanningData();
+  const { areas, settings } = usePlanningData();
   const syncState = useSyncUiState();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [areasOpen, setAreasOpen] = useState(true);
@@ -100,7 +101,9 @@ export function AppShell() {
       <div className={styles.workspace}>
         <header className={styles.topBar}>
           <div>
-            <p className={styles.dateContext}>{formatDateOnly(new Date())}</p>
+            <p className={styles.dateContext}>
+              {getDateOnlyInTimeZone(new Date(), settings.time_zone)}
+            </p>
             <h1>{t(pageTitleKey)}</h1>
           </div>
           <div className={styles.topActions}>
@@ -148,12 +151,4 @@ function SyncStatus({ compact = false, count, label, mode }: SyncStatusProps) {
       <span>{count > 0 ? `${label} (${count})` : label}</span>
     </button>
   );
-}
-
-function formatDateOnly(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
 }

@@ -1,6 +1,8 @@
 import { createContext, useContext, useMemo, type PropsWithChildren } from "react";
 
-import { detectLanguage, formatMessage, messages } from "./messages";
+import { usePlanningData } from "@/features/planning/usePlanningData";
+
+import { formatMessage, messages } from "./messages";
 
 type TranslationContextValue = {
   language: keyof typeof messages;
@@ -10,8 +12,10 @@ type TranslationContextValue = {
 const TranslationContext = createContext<TranslationContextValue | null>(null);
 
 export function I18nProvider({ children }: PropsWithChildren) {
+  const { settings } = usePlanningData();
+
   const value = useMemo<TranslationContextValue>(() => {
-    const language = detectLanguage();
+    const language = settings.language;
 
     return {
       language,
@@ -21,7 +25,7 @@ export function I18nProvider({ children }: PropsWithChildren) {
         return formatMessage(template, values);
       },
     };
-  }, []);
+  }, [settings.language]);
 
   return <TranslationContext.Provider value={value}>{children}</TranslationContext.Provider>;
 }

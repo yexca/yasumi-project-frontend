@@ -88,6 +88,26 @@ export function addDays(date: DateOnly, days: number): DateOnly {
   return formatUtcDate(parsed);
 }
 
+export function formatDateOnly(date: DateOnly): string {
+  return assertDateOnly(date);
+}
+
+export function getDateOnlyInTimeZone(date: Date, timeZone: string): DateOnly {
+  const parts = getDateTimeParts(date, timeZone);
+
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+export function formatLocalDateTime(
+  instant: Instant | Date,
+  timeZone: string,
+): `${DateOnly} ${LocalTime}` {
+  const date = instant instanceof Date ? instant : new Date(instant);
+  const parts = getDateTimeParts(date, timeZone);
+
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+}
+
 export function daysBetween(start: DateOnly, end: DateOnly): number {
   return (toUtcEpochDay(end) - toUtcEpochDay(start)) / 86_400_000;
 }
@@ -107,6 +127,31 @@ function formatUtcDate(date: Date): DateOnly {
   const day = date.getUTCDate().toString().padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function getDateTimeParts(date: Date, timeZone: string) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+    month: "2-digit",
+    second: "2-digit",
+    timeZone,
+    year: "numeric",
+  });
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+
+  return {
+    day: parts.day ?? "01",
+    hour: parts.hour ?? "00",
+    minute: parts.minute ?? "00",
+    month: parts.month ?? "01",
+    second: parts.second ?? "00",
+    year: parts.year ?? "1970",
+  };
 }
 
 function parseDateParts(value: string): [number, number, number] {

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
+import { PlanningDataProvider } from "@/features/planning/usePlanningData";
 import { I18nProvider } from "@/i18n/I18nProvider";
 import { ThemeProvider } from "@/styles/ThemeProvider";
 
@@ -9,11 +10,13 @@ import { SettingsPage } from "./SettingsPage";
 
 function renderSettings() {
   render(
-    <I18nProvider>
-      <ThemeProvider>
-        <SettingsPage />
-      </ThemeProvider>
-    </I18nProvider>,
+    <PlanningDataProvider>
+      <I18nProvider>
+        <ThemeProvider>
+          <SettingsPage />
+        </ThemeProvider>
+      </I18nProvider>
+    </PlanningDataProvider>,
   );
 }
 
@@ -41,5 +44,48 @@ describe("SettingsPage", () => {
     });
 
     expect(screen.getByText("Choose a PNG, JPEG, or WebP image.")).toBeInTheDocument();
+  });
+
+  it("updates the synced language setting and refreshes visible labels", async () => {
+    const user = userEvent.setup();
+
+    renderSettings();
+
+    await user.selectOptions(screen.getByLabelText("Language"), "zh-Hans");
+
+    expect(await screen.findByRole("heading", { name: "设置" })).toBeInTheDocument();
+    expect(screen.getByLabelText("语言")).toHaveValue("zh-Hans");
+    expect(screen.getByLabelText("区域设置")).toHaveValue("zh-CN");
+  });
+
+  it("validates timezone edits before saving them", async () => {
+    const user = userEvent.setup();
+
+    renderSettings();
+
+    const timeZone = screen.getByLabelText("App timezone");
+    await user.clear(timeZone);
+    await user.type(timeZone, "Mars/Olympus");
+    await user.tab();
+
+    expect(
+      screen.getByText("Enter a valid IANA timezone, such as Asia/Tokyo."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows fixed standard date and local date-time previews", async () => {
+    const user = userEvent.setup();
+
+    renderSettings();
+
+    const timeZone = screen.getByLabelText("App timezone");
+    await user.clear(timeZone);
+    await user.type(timeZone, "Asia/Tokyo");
+    await user.tab();
+
+    expect(screen.getByLabelText("Date-only preview")).toHaveValue("2026-06-14");
+    expect(await screen.findByLabelText("Local date-time preview")).toHaveValue(
+      "2026-06-14 17:30:45",
+    );
   });
 });
