@@ -1,0 +1,38 @@
+.areaStack {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.areaGroup {
+  display: grid;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--color-border-default);
+  padding-bottom: var(--space-4);
+}
+
+.areaGroup:last-child {
+  border-bottom: 0;
+}
+
+.areaHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.areaHeader h3,
+.areaHeader p {
+  margin: 0;
+}
+
+.areaHeader h3 {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-section-title);
+  letter-spacing: 0;
+}
+
+.areaHeader p {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-metadata);
+}

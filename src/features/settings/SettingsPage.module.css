@@ -13,6 +13,12 @@
   gap: var(--space-3);
 }
 
+.fieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
 .settingRow {
   display: grid;
   min-height: 48px;
@@ -55,6 +61,10 @@
 }
 
 @media (max-width: 640px) {
+  .fieldGrid {
+    grid-template-columns: 1fr;
+  }
+
   .settingRow {
     grid-template-columns: 1fr;
   }

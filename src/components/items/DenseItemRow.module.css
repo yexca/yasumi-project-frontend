@@ -23,6 +23,8 @@
 .body {
   display: grid;
   min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   gap: 3px;
 }
 
@@ -51,6 +53,14 @@
   min-width: 0;
   flex-wrap: wrap;
   gap: 4px;
+}
+
+.metaLine {
+  justify-content: end;
+}
+
+.reasons {
+  grid-column: 1 / -1;
 }
 
 .pill {
@@ -97,8 +107,13 @@
     grid-template-columns: 28px minmax(0, 1fr) auto;
   }
 
+  .body {
+    grid-template-columns: 1fr;
+  }
+
   .metaLine {
-    grid-column: 1 / -1;
+    grid-column: auto;
+    justify-content: start;
   }
 
   .title {

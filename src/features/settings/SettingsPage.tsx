@@ -3,7 +3,9 @@ import { useRef, useState, type ChangeEvent } from "react";
 
 import { Button } from "@/components/primitives/Button";
 import { SegmentedControl } from "@/components/primitives/ChoiceControls";
+import { Select, TextInput } from "@/components/primitives/Field";
 import { ContentColumn, PageHeader, SectionHeader } from "@/components/layout/LayoutPrimitives";
+import { usePlanningData } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { saveBackgroundAsset, validateBackgroundImage } from "@/styles/backgroundAssets";
 import { useTheme, type ThemeMode } from "@/styles/ThemeProvider";
@@ -12,6 +14,7 @@ import styles from "./SettingsPage.module.css";
 
 export function SettingsPage() {
   const { t } = useTranslation();
+  const { settings } = usePlanningData();
   const { background, resetBackground, setCustomBackground, setThemeMode, themeMode } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [backgroundError, setBackgroundError] = useState<string | null>(null);
@@ -47,6 +50,50 @@ export function SettingsPage() {
       <PageHeader description={t("page.settings.description")} title={t("nav.settings")} />
 
       <div className={styles.settings}>
+        <section className={styles.section}>
+          <SectionHeader
+            description={t("settings.synced.description")}
+            title={t("settings.synced.title")}
+          />
+          <div className={styles.fieldGrid}>
+            <Select defaultValue={settings.language} label={t("settings.language.label")}>
+              <option value="en">{t("settings.language.en")}</option>
+              <option value="zh-Hans">{t("settings.language.zhHans")}</option>
+              <option value="ja">{t("settings.language.ja")}</option>
+            </Select>
+            <TextInput defaultValue={settings.locale} label={t("settings.locale.label")} />
+            <Select defaultValue={settings.week_start_day} label={t("settings.weekStart.label")}>
+              <option value="sunday">{t("settings.weekStart.sunday")}</option>
+              <option value="monday">{t("settings.weekStart.monday")}</option>
+            </Select>
+            <TextInput defaultValue={settings.time_zone} label={t("settings.timeZone.label")} />
+            <TextInput
+              defaultValue={settings.date_display_format}
+              label={t("settings.dateFormat.label")}
+              readOnly
+            />
+            <Select
+              defaultValue={settings.time_display_format}
+              label={t("settings.timeFormat.label")}
+            >
+              <option value="12h">{t("settings.timeFormat.12h")}</option>
+              <option value="24h">{t("settings.timeFormat.24h")}</option>
+            </Select>
+            <TextInput
+              defaultValue={settings.today_primary_lookahead_days}
+              label={t("settings.primaryLookahead.label")}
+              min={1}
+              type="number"
+            />
+            <TextInput
+              defaultValue={settings.deadline_awareness_days}
+              label={t("settings.deadlineAwareness.label")}
+              min={1}
+              type="number"
+            />
+          </div>
+        </section>
+
         <section className={styles.section}>
           <SectionHeader
             description={t("settings.appearance.description")}

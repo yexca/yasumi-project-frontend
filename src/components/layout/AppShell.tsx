@@ -1,7 +1,10 @@
-import { Plus, WifiOff } from "lucide-react";
+import { ChevronDown, Plus, WifiOff } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 
 import { NAV_ITEMS, ROUTE_PATHS } from "@/app/router/routes";
+import { QuickAddDialog } from "@/features/items/ItemDialogs";
+import { usePlanningData } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { usePowerSyncPlaceholder } from "@/repositories/powersync/PowerSyncPlaceholderProvider";
 
@@ -10,10 +13,22 @@ import styles from "./AppShell.module.css";
 export function AppShell() {
   const { pathname } = useLocation();
   const { t } = useTranslation();
+  const { areas } = usePlanningData();
   const syncState = usePowerSyncPlaceholder();
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [areasOpen, setAreasOpen] = useState(true);
   const pageTitleKey =
     NAV_ITEMS.find((item) => item.path !== ROUTE_PATHS.areas && pathname.startsWith(item.path))
       ?.labelKey ?? (pathname.startsWith(ROUTE_PATHS.areas) ? "nav.areas" : "nav.today");
+
+  useEffect(() => {
+    function openQuickAdd() {
+      setQuickAddOpen(true);
+    }
+
+    window.addEventListener("yasumi:quick-add", openQuickAdd);
+    return () => window.removeEventListener("yasumi:quick-add", openQuickAdd);
+  }, []);
 
   return (
     <div className={styles.shell}>
@@ -23,20 +38,58 @@ export function AppShell() {
           <span>Yasumi</span>
         </div>
         <nav className={styles.navList}>
-          {NAV_ITEMS.map((item) => (
-            <NavLink
-              className={({ isActive }) =>
-                isActive || (item.path === ROUTE_PATHS.areas && pathname.startsWith("/areas"))
-                  ? `${styles.navLink} ${styles.activeNavLink}`
-                  : styles.navLink
-              }
-              key={item.path}
-              to={item.path}
-            >
-              <item.icon aria-hidden="true" size={18} strokeWidth={2} />
-              <span>{t(item.labelKey)}</span>
-            </NavLink>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.path === ROUTE_PATHS.areas ? (
+              <div className={styles.navGroup} key={item.path}>
+                <div className={styles.navGroupRow}>
+                  <NavLink
+                    className={({ isActive }) =>
+                      isActive || pathname.startsWith("/areas")
+                        ? `${styles.navLink} ${styles.activeNavLink}`
+                        : styles.navLink
+                    }
+                    to={item.path}
+                  >
+                    <item.icon aria-hidden="true" size={18} strokeWidth={2} />
+                    <span>{t(item.labelKey)}</span>
+                  </NavLink>
+                  <button
+                    aria-expanded={areasOpen}
+                    aria-label={t("area.nav.toggle")}
+                    className={styles.navGroupToggle}
+                    onClick={() => setAreasOpen((open) => !open)}
+                    type="button"
+                  >
+                    <ChevronDown aria-hidden="true" size={15} />
+                  </button>
+                </div>
+                {areasOpen && areas.length > 0 ? (
+                  <div className={styles.areaNavList}>
+                    {areas.map((area) => (
+                      <NavLink
+                        className={styles.areaNavLink}
+                        key={area.id}
+                        to={`/areas/${area.id}`}
+                      >
+                        {area.name}
+                      </NavLink>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <NavLink
+                className={({ isActive }) =>
+                  isActive ? `${styles.navLink} ${styles.activeNavLink}` : styles.navLink
+                }
+                key={item.path}
+                to={item.path}
+              >
+                <item.icon aria-hidden="true" size={18} strokeWidth={2} />
+                <span>{t(item.labelKey)}</span>
+              </NavLink>
+            ),
+          )}
         </nav>
         <SyncStatus label={t(syncState.labelKey)} />
       </aside>
@@ -49,7 +102,11 @@ export function AppShell() {
           </div>
           <div className={styles.topActions}>
             <SyncStatus compact label={t(syncState.labelKey)} />
-            <button className={styles.quickAddButton} type="button">
+            <button
+              className={styles.quickAddButton}
+              onClick={() => setQuickAddOpen(true)}
+              type="button"
+            >
               <Plus aria-hidden="true" size={18} />
               <span>{t("quickAdd.button")}</span>
             </button>
@@ -60,6 +117,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <QuickAddDialog onOpenChange={setQuickAddOpen} open={quickAddOpen} />
     </div>
   );
 }

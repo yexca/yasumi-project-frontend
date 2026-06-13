@@ -20,7 +20,9 @@ type DenseItemRowProps = {
   date?: string;
   leading?: ReactNode;
   moreActionLabel: string;
+  onPrimaryAction?: () => void;
   primaryActionLabel: string;
+  primaryIcon?: ReactNode;
   reasons?: string[];
   state?: DenseItemRowState;
   stateLabel?: string;
@@ -33,7 +35,9 @@ export function DenseItemRow({
   date,
   leading,
   moreActionLabel,
+  onPrimaryAction,
   primaryActionLabel,
+  primaryIcon,
   reasons = [],
   state = "normal",
   stateLabel,
@@ -96,7 +100,8 @@ export function DenseItemRow({
       </div>
       <IconButton
         aria-label={primaryActionLabel}
-        icon={<CheckCircle2 aria-hidden="true" size={17} />}
+        icon={primaryIcon ?? <CheckCircle2 aria-hidden="true" size={17} />}
+        onClick={onPrimaryAction}
         tooltip={primaryActionLabel}
       />
       <div className={styles.actions}>

@@ -1,0 +1,33 @@
+.section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.list {
+  display: grid;
+  gap: 6px;
+}
+
+.emptyState {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  border: 1px dashed var(--color-border-default);
+  border-radius: var(--radius-card);
+  background: var(--surface-panel-background);
+  padding: var(--space-6);
+}
+
+.emptyState h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.emptyState p {
+  max-width: 560px;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-body);
+}
