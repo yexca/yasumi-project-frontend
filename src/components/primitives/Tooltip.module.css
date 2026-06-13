@@ -1,0 +1,12 @@
+.content {
+  z-index: 50;
+  max-width: 220px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-control);
+  background: var(--color-text-primary);
+  color: var(--color-surface-panel);
+  padding: 6px 8px;
+  font-size: var(--font-size-metadata);
+  line-height: 1.35;
+  box-shadow: var(--shadow-overlay);
+}

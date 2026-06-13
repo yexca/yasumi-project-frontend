@@ -1,0 +1,57 @@
+:root {
+  --color-surface-app: #f7f7f4;
+  --color-surface-panel: #ffffff;
+  --color-surface-subtle: #eeeeea;
+  --color-surface-row: #ffffff;
+  --color-surface-row-glass: rgb(255 255 255 / 74%);
+  --color-surface-translucent: rgb(255 255 255 / 86%);
+  --color-border-default: #d9dad3;
+  --color-border-strong: #aeb3a8;
+  --color-text-primary: #20201e;
+  --color-text-secondary: #60615b;
+  --color-text-muted: #83847b;
+  --color-accent-default: #2f6f68;
+  --color-accent-strong: #22544f;
+  --color-accent-soft: #e0efeb;
+  --color-success-default: #397b54;
+  --color-success-soft: #e6f1ea;
+  --color-warning-default: #a56c28;
+  --color-warning-soft: #f6ebd6;
+  --color-danger-default: #a34040;
+  --color-danger-soft: #f5e4e1;
+  --shadow-panel: 0 1px 2px rgb(21 23 20 / 8%);
+  --shadow-overlay: 0 18px 48px rgb(21 23 20 / 18%);
+  --radius-card: 8px;
+  --radius-control: 6px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --font-size-page-title: 24px;
+  --font-size-section-title: 16px;
+  --font-size-item-title: 15px;
+  --font-size-body: 14px;
+  --font-size-metadata: 12px;
+  --size-icon-button: 32px;
+  --size-icon-button-touch: 40px;
+  --size-row-min-height: 44px;
+  --size-row-recommended-min-height: 64px;
+  --sidebar-width: 248px;
+  --topbar-height: 80px;
+  --focus-ring: 0 0 0 3px rgb(47 111 104 / 28%);
+
+  /* Backward-compatible aliases for phase 01 components. */
+  --color-bg: var(--color-surface-app);
+  --color-bg-elevated: var(--color-surface-panel);
+  --color-bg-muted: var(--color-surface-subtle);
+  --color-text: var(--color-text-primary);
+  --color-border: var(--color-border-default);
+  --color-accent: var(--color-accent-default);
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-card);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}

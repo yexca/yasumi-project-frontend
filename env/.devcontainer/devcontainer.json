@@ -1,0 +1,15 @@
+{
+  "name": "Yasumi Frontend",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": "../.."
+  },
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [5173, 4175],
+  "postCreateCommand": "npm ci",
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "ms-playwright.playwright"]
+    }
+  }
+}

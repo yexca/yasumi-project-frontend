@@ -1,0 +1,227 @@
+.shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+}
+
+.sidebar {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  gap: 18px;
+  border-right: 1px solid var(--color-border-default);
+  background: var(--surface-panel-background);
+  padding: 18px 12px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px 10px;
+  font-size: 18px;
+  font-weight: 720;
+}
+
+.brandMark {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--color-accent-default);
+  color: #ffffff;
+  font-weight: 760;
+}
+
+.navList {
+  display: grid;
+  gap: 3px;
+}
+
+.navLink {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  padding: 0 10px;
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.navLink:hover {
+  background: var(--color-bg-muted);
+  color: var(--color-text-primary);
+}
+
+.activeNavLink {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.syncStatus,
+.syncStatusCompact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-soft);
+  color: var(--color-text-primary);
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.syncStatus {
+  margin-top: auto;
+}
+
+.syncStatusCompact {
+  display: none;
+  white-space: nowrap;
+}
+
+.workspace {
+  min-width: 0;
+}
+
+.topBar {
+  display: flex;
+  min-height: var(--topbar-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--color-border-default);
+  background: var(--surface-translucent-background);
+  padding: 14px 24px;
+}
+
+.topBar h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 740;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.dateContext {
+  margin: 0 0 2px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quickAddButton {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--color-accent-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-default);
+  color: #ffffff;
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 660;
+}
+
+.quickAddButton:hover {
+  background: var(--color-accent-strong);
+}
+
+.content {
+  min-width: 0;
+  padding: 22px 24px;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 10;
+    min-height: 0;
+    border-top: 1px solid var(--color-border-default);
+    border-right: 0;
+    padding: 7px;
+  }
+
+  .brand,
+  .syncStatus {
+    display: none;
+  }
+
+  .navList {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .navLink:nth-child(n + 6) {
+    display: none;
+  }
+
+  .navLink {
+    min-height: 48px;
+    flex-direction: column;
+    gap: 3px;
+    justify-content: center;
+    padding: 3px;
+    font-size: 11px;
+  }
+
+  .topBar {
+    min-height: 68px;
+    padding: 10px 14px;
+  }
+
+  .topBar h1 {
+    font-size: 20px;
+  }
+
+  .quickAddButton {
+    width: 40px;
+    padding: 0;
+  }
+
+  .quickAddButton span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .syncStatusCompact {
+    display: inline-flex;
+    width: 40px;
+    padding: 0;
+  }
+
+  .syncStatusCompact span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .content {
+    padding: 18px 14px 82px;
+  }
+}

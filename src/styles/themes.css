@@ -1,0 +1,67 @@
+.theme-root {
+  min-height: 100vh;
+  background:
+    var(--app-background-image, none) center / cover fixed no-repeat,
+    var(--color-surface-app);
+  color: var(--color-text-primary);
+}
+
+.theme-root[data-theme="dark"] {
+  --color-surface-app: #111210;
+  --color-surface-panel: #191a18;
+  --color-surface-subtle: #232520;
+  --color-surface-row: #1d1f1c;
+  --color-surface-row-glass: rgb(27 29 26 / 76%);
+  --color-surface-translucent: rgb(25 26 24 / 88%);
+  --color-border-default: #34372f;
+  --color-border-strong: #555b4d;
+  --color-text-primary: #f2f2ec;
+  --color-text-secondary: #c7c9bf;
+  --color-text-muted: #94978c;
+  --color-accent-default: #79b7ad;
+  --color-accent-strong: #9cd1c8;
+  --color-accent-soft: #223f3b;
+  --color-success-default: #8bc59a;
+  --color-success-soft: #1f3829;
+  --color-warning-default: #dfb36e;
+  --color-warning-soft: #3d2e1d;
+  --color-danger-default: #df8f89;
+  --color-danger-soft: #3f2624;
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 24%);
+  --shadow-overlay: 0 18px 48px rgb(0 0 0 / 38%);
+  --focus-ring: 0 0 0 3px rgb(121 183 173 / 32%);
+}
+
+.theme-root[data-background="none"] {
+  --surface-panel-background: var(--color-surface-panel);
+  --surface-row-background: var(--color-surface-row);
+  --surface-translucent-background: var(--color-surface-panel);
+  --surface-blur: none;
+}
+
+.theme-root:not([data-background="none"]) {
+  --surface-panel-background: var(--color-surface-translucent);
+  --surface-row-background: var(--color-surface-row-glass);
+  --surface-translucent-background: var(--color-surface-translucent);
+  --surface-blur: blur(18px) saturate(1.1);
+}
+
+.theme-root:not([data-background="none"])::before {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--color-surface-app) 38%, transparent);
+  content: "";
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

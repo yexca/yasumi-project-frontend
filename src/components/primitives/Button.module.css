@@ -1,0 +1,77 @@
+.button,
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font-weight: 660;
+  line-height: 1;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.button {
+  min-height: 36px;
+  gap: var(--space-2);
+  padding: 0 12px;
+  font-size: var(--font-size-body);
+}
+
+.iconButton {
+  width: var(--size-icon-button);
+  height: var(--size-icon-button);
+  padding: 0;
+}
+
+.primary {
+  background: var(--color-accent-default);
+  color: #ffffff;
+}
+
+.primary:hover {
+  background: var(--color-accent-strong);
+}
+
+.secondary {
+  border-color: var(--color-border-default);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+}
+
+.secondary:hover {
+  background: var(--color-surface-subtle);
+}
+
+.quiet {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+
+.quiet:hover {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-primary);
+}
+
+.danger {
+  border-color: color-mix(in srgb, var(--color-danger-default) 32%, transparent);
+  background: var(--color-danger-soft);
+  color: var(--color-danger-default);
+}
+
+.danger:hover {
+  border-color: var(--color-danger-default);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .iconButton {
+    width: var(--size-icon-button-touch);
+    height: var(--size-icon-button-touch);
+  }
+}

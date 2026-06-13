@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Yasumi">
+  <rect width="64" height="64" rx="14" fill="#2f6f68" />
+  <path
+    d="M18 17h8l6.2 12.1L38.5 17H46L35.8 35.3V47h-7.2V35.3L18 17Z"
+    fill="#fff"
+  />
+</svg>
