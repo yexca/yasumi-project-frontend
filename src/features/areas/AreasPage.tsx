@@ -67,6 +67,7 @@ export function AreasPage() {
                 />
                 <AreaDeleteDialog
                   activeCount={rows.length}
+                  areaId={area.id}
                   areaName={area.name}
                   completedCount={completedCount}
                   onOpenChange={(open) => {

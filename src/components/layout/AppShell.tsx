@@ -4,9 +4,8 @@ import { NavLink, Outlet, useLocation } from "react-router";
 
 import { NAV_ITEMS, ROUTE_PATHS } from "@/app/router/routes";
 import { QuickAddDialog } from "@/features/items/ItemDialogs";
-import { usePlanningData } from "@/features/planning/usePlanningData";
+import { usePlanningData, useSyncUiState } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
-import { usePowerSyncPlaceholder } from "@/repositories/powersync/PowerSyncPlaceholderProvider";
 
 import styles from "./AppShell.module.css";
 
@@ -14,7 +13,7 @@ export function AppShell() {
   const { pathname } = useLocation();
   const { t } = useTranslation();
   const { areas } = usePlanningData();
-  const syncState = usePowerSyncPlaceholder();
+  const syncState = useSyncUiState();
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [areasOpen, setAreasOpen] = useState(true);
   const pageTitleKey =
@@ -91,7 +90,11 @@ export function AppShell() {
             ),
           )}
         </nav>
-        <SyncStatus label={t(syncState.labelKey)} />
+        <SyncStatus
+          count={syncState.rejectedCount || syncState.pendingCount}
+          label={t(syncState.labelKey)}
+          mode={syncState.mode}
+        />
       </aside>
 
       <div className={styles.workspace}>
@@ -101,7 +104,12 @@ export function AppShell() {
             <h1>{t(pageTitleKey)}</h1>
           </div>
           <div className={styles.topActions}>
-            <SyncStatus compact label={t(syncState.labelKey)} />
+            <SyncStatus
+              compact
+              count={syncState.rejectedCount || syncState.pendingCount}
+              label={t(syncState.labelKey)}
+              mode={syncState.mode}
+            />
             <button
               className={styles.quickAddButton}
               onClick={() => setQuickAddOpen(true)}
@@ -124,14 +132,20 @@ export function AppShell() {
 
 type SyncStatusProps = {
   compact?: boolean;
+  count: number;
   label: string;
+  mode: string;
 };
 
-function SyncStatus({ compact = false, label }: SyncStatusProps) {
+function SyncStatus({ compact = false, count, label, mode }: SyncStatusProps) {
   return (
-    <button className={compact ? styles.syncStatusCompact : styles.syncStatus} type="button">
+    <button
+      className={compact ? styles.syncStatusCompact : styles.syncStatus}
+      data-sync-mode={mode}
+      type="button"
+    >
       <WifiOff aria-hidden="true" size={16} />
-      <span>{compact ? label : label}</span>
+      <span>{count > 0 ? `${label} (${count})` : label}</span>
     </button>
   );
 }

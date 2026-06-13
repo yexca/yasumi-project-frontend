@@ -3,11 +3,16 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/primitives/Button";
 import { Dialog, DialogClose } from "@/components/primitives/Dialog";
 import { Select, TextArea, TextInput } from "@/components/primitives/Field";
+import type { DateOnly } from "@/domain/time/dateOnly";
+import { isDateOnly } from "@/domain/time/dateOnly";
+import { usePlanningData, usePlanningMutations } from "@/features/planning/usePlanningData";
 import type { AreaDto, LocalItemRow, RecurringTaskTemplateDto } from "@/domain/items/schemas";
 import { useTranslation } from "@/i18n/I18nProvider";
 
 import type { ItemAction } from "./itemPresentation";
 import styles from "./ItemDialogs.module.css";
+
+type ClassificationTarget = "date_task" | "deadline_task" | "idea" | "recurring_template";
 
 type QuickAddDialogProps = {
   onOpenChange: (open: boolean) => void;
@@ -16,11 +21,17 @@ type QuickAddDialogProps = {
 
 export function QuickAddDialog({ onOpenChange, open }: QuickAddDialogProps) {
   const { t } = useTranslation();
+  const { createCapture } = usePlanningMutations();
   const [sourceText, setSourceText] = useState("");
   const preview = useMemo(
     () => buildQuickAddPreview(sourceText, t("quickAdd.untitled")),
     [sourceText, t],
   );
+  const save = (mode: "inbox" | "suggestion") => {
+    createCapture({ mode, sourceText });
+    setSourceText("");
+    onOpenChange(false);
+  };
 
   return (
     <Dialog
@@ -46,12 +57,10 @@ export function QuickAddDialog({ onOpenChange, open }: QuickAddDialogProps) {
           ]}
         />
         <div className={styles.actions}>
-          <DialogClose asChild>
-            <Button>{t("quickAdd.saveInbox")}</Button>
-          </DialogClose>
-          <DialogClose asChild>
-            <Button variant="primary">{t("quickAdd.confirm")}</Button>
-          </DialogClose>
+          <Button onClick={() => save("inbox")}>{t("quickAdd.saveInbox")}</Button>
+          <Button onClick={() => save("suggestion")} variant="primary">
+            {t("quickAdd.confirm")}
+          </Button>
         </div>
       </div>
     </Dialog>
@@ -68,6 +77,7 @@ type ItemFlowDialogProps = {
 
 export function ItemFlowDialog({ action, areas, item, onOpenChange, open }: ItemFlowDialogProps) {
   const { t } = useTranslation();
+  const { runItemAction } = usePlanningMutations();
 
   if (!item || !action) {
     return null;
@@ -113,13 +123,15 @@ export function ItemFlowDialog({ action, areas, item, onOpenChange, open }: Item
           <DialogClose asChild>
             <Button>{t("common.cancel")}</Button>
           </DialogClose>
-          <DialogClose asChild>
-            <Button
-              variant={action.id === "delete" || action.id === "abandon" ? "danger" : "primary"}
-            >
-              {t("common.confirm")}
-            </Button>
-          </DialogClose>
+          <Button
+            onClick={() => {
+              runItemAction(item.id, action.id);
+              onOpenChange(false);
+            }}
+            variant={action.id === "delete" || action.id === "abandon" ? "danger" : "primary"}
+          >
+            {t("common.confirm")}
+          </Button>
         </div>
       </div>
     </Dialog>
@@ -133,7 +145,11 @@ function ClassificationDialog({
   open,
 }: Omit<ItemFlowDialogProps, "areas"> & { action: ItemAction; item: LocalItemRow }) {
   const { t } = useTranslation();
-  const [target, setTarget] = useState("date_task");
+  const data = usePlanningData();
+  const { classifyItem } = usePlanningMutations();
+  const [target, setTarget] = useState<ClassificationTarget>("date_task");
+  const [scheduledDate, setScheduledDate] = useState(data.today);
+  const [deadlineDate, setDeadlineDate] = useState(data.today);
 
   return (
     <Dialog
@@ -146,7 +162,7 @@ function ClassificationDialog({
         <TextInput label={t("item.field.title")} readOnly value={item.title} />
         <Select
           label={t("classification.target.label")}
-          onChange={(event) => setTarget(event.target.value)}
+          onChange={(event) => setTarget(event.target.value as ClassificationTarget)}
           value={target}
         >
           <option value="date_task">{t("item.type.dateTask")}</option>
@@ -155,10 +171,20 @@ function ClassificationDialog({
           <option value="recurring_template">{t("item.type.recurringTemplate")}</option>
         </Select>
         {target === "date_task" ? (
-          <TextInput label={t("item.field.scheduledDate")} type="date" />
+          <TextInput
+            label={t("item.field.scheduledDate")}
+            onChange={(event) => setScheduledDate(event.target.value)}
+            type="date"
+            value={scheduledDate}
+          />
         ) : null}
         {target === "deadline_task" ? (
-          <TextInput label={t("item.field.deadlineDate")} type="date" />
+          <TextInput
+            label={t("item.field.deadlineDate")}
+            onChange={(event) => setDeadlineDate(event.target.value)}
+            type="date"
+            value={deadlineDate}
+          />
         ) : null}
         {target === "recurring_template" ? (
           <TextInput label={t("recurrence.field.startDate")} type="date" />
@@ -167,9 +193,19 @@ function ClassificationDialog({
           <DialogClose asChild>
             <Button>{t("common.cancel")}</Button>
           </DialogClose>
-          <DialogClose asChild>
-            <Button variant="primary">{t("classification.confirm")}</Button>
-          </DialogClose>
+          <Button
+            onClick={() => {
+              classifyItem(item.id, {
+                deadlineDate: toDateOnly(deadlineDate),
+                scheduledDate: toDateOnly(scheduledDate),
+                targetType: target,
+              });
+              onOpenChange(false);
+            }}
+            variant="primary"
+          >
+            {t("classification.confirm")}
+          </Button>
         </div>
       </div>
     </Dialog>
@@ -183,6 +219,9 @@ function PostponeDialog({
   open,
 }: Omit<ItemFlowDialogProps, "areas"> & { action: ItemAction; item: LocalItemRow }) {
   const { t } = useTranslation();
+  const data = usePlanningData();
+  const { postponeItem } = usePlanningMutations();
+  const [targetDate, setTargetDate] = useState(data.today);
   const targetLabel =
     item.item_type === "deadline_task"
       ? t("item.field.plannedWorkDate")
@@ -200,14 +239,28 @@ function PostponeDialog({
       title={t(action.id === "setReviewDate" ? "reviewDate.title" : "postpone.title")}
     >
       <div className={styles.dialogBody}>
-        <TextInput label={targetLabel} type="date" />
+        <TextInput
+          label={targetLabel}
+          onChange={(event) => setTargetDate(event.target.value)}
+          type="date"
+          value={targetDate}
+        />
         <div className={styles.actions}>
           <DialogClose asChild>
             <Button>{t("common.cancel")}</Button>
           </DialogClose>
-          <DialogClose asChild>
-            <Button variant="primary">{t("common.save")}</Button>
-          </DialogClose>
+          <Button
+            onClick={() => {
+              const date = toDateOnly(targetDate);
+              if (date !== null) {
+                postponeItem(item.id, { targetDate: date });
+              }
+              onOpenChange(false);
+            }}
+            variant="primary"
+          >
+            {t("common.save")}
+          </Button>
         </div>
       </div>
     </Dialog>
@@ -230,6 +283,10 @@ export function ItemEditorDialog({
   title,
 }: ItemEditorDialogProps) {
   const { t } = useTranslation();
+  const { editItem } = usePlanningMutations();
+  const [titleValue, setTitleValue] = useState(item.title);
+  const [areaId, setAreaId] = useState(item.area_id ?? "");
+  const [note, setNote] = useState(item.note ?? "");
 
   return (
     <Dialog
@@ -239,8 +296,17 @@ export function ItemEditorDialog({
       title={title}
     >
       <div className={styles.dialogBody}>
-        <TextInput label={t("item.field.title")} defaultValue={item.title} required />
-        <Select defaultValue={item.area_id ?? ""} label={t("area.picker.label")}>
+        <TextInput
+          label={t("item.field.title")}
+          onChange={(event) => setTitleValue(event.target.value)}
+          required
+          value={titleValue}
+        />
+        <Select
+          label={t("area.picker.label")}
+          onChange={(event) => setAreaId(event.target.value)}
+          value={areaId}
+        >
           <option value="">{t("area.picker.none")}</option>
           {areas.map((area) => (
             <option key={area.id} value={area.id}>
@@ -248,14 +314,29 @@ export function ItemEditorDialog({
             </option>
           ))}
         </Select>
-        <TextArea defaultValue={item.note ?? ""} label={t("item.field.note")} rows={5} />
+        <TextArea
+          label={t("item.field.note")}
+          onChange={(event) => setNote(event.target.value)}
+          rows={5}
+          value={note}
+        />
         <div className={styles.actions}>
           <DialogClose asChild>
             <Button>{t("common.cancel")}</Button>
           </DialogClose>
-          <DialogClose asChild>
-            <Button variant="primary">{t("common.save")}</Button>
-          </DialogClose>
+          <Button
+            onClick={() => {
+              editItem(item.id, {
+                areaId: areaId === "" ? null : areaId,
+                note: note.trim().length > 0 ? note : null,
+                title: titleValue,
+              });
+              onOpenChange(false);
+            }}
+            variant="primary"
+          >
+            {t("common.save")}
+          </Button>
         </div>
       </div>
     </Dialog>
@@ -264,6 +345,7 @@ export function ItemEditorDialog({
 
 type AreaDeleteDialogProps = {
   activeCount: number;
+  areaId: string;
   areaName: string;
   completedCount: number;
   onOpenChange: (open: boolean) => void;
@@ -272,12 +354,14 @@ type AreaDeleteDialogProps = {
 
 export function AreaDeleteDialog({
   activeCount,
+  areaId,
   areaName,
   completedCount,
   onOpenChange,
   open,
 }: AreaDeleteDialogProps) {
   const { t } = useTranslation();
+  const { deleteArea } = usePlanningMutations();
 
   return (
     <Dialog
@@ -299,16 +383,31 @@ export function AreaDeleteDialog({
           <DialogClose asChild>
             <Button>{t("common.cancel")}</Button>
           </DialogClose>
-          <DialogClose asChild>
-            <Button>{t("area.delete.areaOnly")}</Button>
-          </DialogClose>
-          <DialogClose asChild>
-            <Button variant="danger">{t("area.delete.areaAndItems")}</Button>
-          </DialogClose>
+          <Button
+            onClick={() => {
+              deleteArea(areaId, "area_only");
+              onOpenChange(false);
+            }}
+          >
+            {t("area.delete.areaOnly")}
+          </Button>
+          <Button
+            onClick={() => {
+              deleteArea(areaId, "area_and_items");
+              onOpenChange(false);
+            }}
+            variant="danger"
+          >
+            {t("area.delete.areaAndItems")}
+          </Button>
         </div>
       </div>
     </Dialog>
   );
+}
+
+function toDateOnly(value: string): DateOnly | null {
+  return isDateOnly(value) ? value : null;
 }
 
 type RecurringTemplateDialogProps = {

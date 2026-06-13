@@ -12,7 +12,7 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "Today", level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Quick Add" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Local sync not connected" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Synced" })).toHaveLength(2);
   });
 
   it("renders a placeholder for each MVP route", async () => {

@@ -61,10 +61,24 @@ export const apiErrorDtoSchema = z.object({
 
 export type ApiErrorDto = z.infer<typeof apiErrorDtoSchema>;
 
+export const syncTokenResponseDtoSchema = z.object({
+  token: z.string().min(1),
+  expires_at: instantSchema,
+  stream_scope: z.object({
+    user_id: z.string().min(1),
+  }),
+});
+
+export type SyncTokenResponseDto = z.infer<typeof syncTokenResponseDtoSchema>;
+
 export function parseAuthResponseDto(input: unknown): AuthResponseDto {
   return authResponseDtoSchema.parse(input);
 }
 
 export function parseApiErrorDto(input: unknown): ApiErrorDto {
   return apiErrorDtoSchema.parse(input);
+}
+
+export function parseSyncTokenResponseDto(input: unknown): SyncTokenResponseDto {
+  return syncTokenResponseDtoSchema.parse(input);
 }

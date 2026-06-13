@@ -5,6 +5,7 @@ import { Button } from "@/components/primitives/Button";
 import { ContentColumn, PageHeader, SectionHeader } from "@/components/layout/LayoutPrimitives";
 import type { TodayReasonKey } from "@/domain/constants/shared";
 import type { AreaDto, LocalItemRow } from "@/domain/items/schemas";
+import { usePlanningMutations } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
 
 import { ItemOverflowActions } from "./ItemActions";
@@ -111,6 +112,7 @@ type PlanningItemRowProps = {
 
 export function PlanningItemRow({ areas, item, onAction, reasons, state }: PlanningItemRowProps) {
   const { t } = useTranslation();
+  const { getItemSyncState } = usePlanningMutations();
   const areaName = useMemo(
     () => areas.find((area) => area.id === item.area_id)?.name,
     [areas, item.area_id],
@@ -118,7 +120,8 @@ export function PlanningItemRow({ areas, item, onAction, reasons, state }: Plann
   const primary = getPrimaryAction(item);
   const primaryLabel = t(primary.labelKey);
   const stateKey = getStateKey(item.status);
-  const rowState = state ?? itemStatusToRowState(item);
+  const syncState = getItemSyncState(item.id);
+  const rowState = syncState ?? state ?? itemStatusToRowState(item);
   const date = buildDateMetadata(item, t);
 
   return (
@@ -133,7 +136,15 @@ export function PlanningItemRow({ areas, item, onAction, reasons, state }: Plann
       primaryIcon={getPrimaryActionIcon(primary.id)}
       reasons={reasons?.map((reason) => t(reasonKeyToMessageKey(reason)))}
       state={rowState}
-      stateLabel={stateKey ? t(stateKey) : undefined}
+      stateLabel={
+        syncState === "pending"
+          ? t("sync.itemPending")
+          : syncState === "rejected"
+            ? t("sync.itemRejected")
+            : stateKey
+              ? t(stateKey)
+              : undefined
+      }
       title={item.title}
     />
   );
