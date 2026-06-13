@@ -5,7 +5,7 @@
     "context": "../.."
   },
   "workspaceFolder": "/workspace",
-  "forwardPorts": [5173, 4175],
+  "forwardPorts": [5173, 4175, 7655, 8081],
   "postCreateCommand": "npm ci",
   "customizations": {
     "vscode": {

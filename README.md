@@ -1,6 +1,6 @@
 # Yasumi Frontend
 
-Phase 01 frontend foundation for Yasumi.
+Frontend workspace for Yasumi. Current implementation covers the Phase 03 local domain and repository boundary foundation.
 
 ## Start
 
@@ -29,12 +29,14 @@ E2E tests are configured with Playwright:
 .\env\npm.cmd run test:e2e
 ```
 
-## Phase 01 Scope
+## Current Scope
 
 - Vite + React + TypeScript foundation.
 - React Router Data Mode route configuration for MVP routes.
 - App shell with navigation, Quick Add placeholder, and sync status placeholder.
 - i18n, theme, direct API query, and disconnected PowerSync provider placeholders.
+- Design tokens, themes, compact primitives, layout primitives, and background preferences.
+- Shared domain constants, enum validators, date-only helpers, status transitions, idempotency keys, DTO schemas, local row normalization, repository interfaces, and local read-model helpers.
 - Strict TypeScript, linting, formatting, unit/component tests, E2E configuration, Dockerfile, and dev container setup.
 
 The old Vue scaffold has been moved to `legacy/vue-scaffold`.

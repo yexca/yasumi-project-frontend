@@ -27,6 +27,13 @@ docker build -f env/Dockerfile -t yasumi-frontend .
 docker run --rm -it -p 5173:5173 yasumi-frontend
 ```
 
+## Service Ports
+
+- Frontend dev server: `5173`
+- Frontend preview/E2E support: `4175`
+- Local backend API: `7655`
+- Local PowerSync service: `8081`
+
 ## Dev Container
 
 Use `.devcontainer/devcontainer.json` as the primary dev-container definition. The equivalent `env/.devcontainer/devcontainer.json` is kept next to the Dockerfile for environment documentation.
