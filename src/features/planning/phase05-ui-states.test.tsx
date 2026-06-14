@@ -40,7 +40,7 @@ describe("phase 05 sync UI states", () => {
 
     await screen.findByRole("heading", { name: "Inbox", level: 2 });
     await user.click(firstButton("Quick Add"));
-    await user.type(screen.getByLabelText("Source text"), "Call venue tomorrow");
+    await user.type(await screen.findByLabelText("Source text"), "Call venue tomorrow");
     await user.click(screen.getByRole("button", { name: "Save as Inbox" }));
 
     expect(await screen.findByText("Call venue tomorrow")).toBeInTheDocument();

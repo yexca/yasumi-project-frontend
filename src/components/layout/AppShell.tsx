@@ -10,28 +10,31 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router";
 
 import { NAV_ITEMS, ROUTE_PATHS } from "@/app/router/routes";
 import { IconButton } from "@/components/primitives/Button";
 import { getDateOnlyInTimeZone } from "@/domain/time/dateOnly";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { QuickAddDialog } from "@/features/items/ItemDialogs";
 import {
   usePlanningData,
   usePlanningMutations,
   useSyncSnapshot,
   useSyncUiState,
 } from "@/features/planning/usePlanningData";
-import { flushLocalSync } from "@/features/sync/syncApi";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { getDefaultLocale } from "@/i18n/messages";
 import { useTheme } from "@/styles/ThemeProvider";
-import { fetchWeather } from "@/features/weather/weatherApi";
 import type { WeatherResponseDto } from "@/repositories/direct-api/dtos";
 
 import styles from "./AppShell.module.css";
+
+const QuickAddDialog = lazy(() =>
+  import("@/features/items/ItemDialogs").then((module) => ({
+    default: module.QuickAddDialog,
+  })),
+);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -94,7 +97,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     lastSyncAttemptKey.current = attemptKey;
 
     let active = true;
-    flushLocalSync(session.accessToken, syncSnapshot.deviceId)
+    const accessToken = session.accessToken;
+    import("@/features/sync/syncApi")
+      .then(({ flushLocalSync }) => flushLocalSync(accessToken, syncSnapshot.deviceId))
       .then(() => {
         if (!active) {
           return;
@@ -113,7 +118,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
 
     let active = true;
-    fetchWeather(session.accessToken, settings.weather_city)
+    const accessToken = session.accessToken;
+    const weatherCity = settings.weather_city;
+
+    import("@/features/weather/weatherApi")
+      .then(({ fetchWeather }) => fetchWeather(accessToken, weatherCity))
       .then((nextWeather) => {
         if (active) {
           setWeather(nextWeather);
@@ -271,11 +280,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       >
         <Plus aria-hidden="true" size={22} />
       </button>
-      <QuickAddDialog
-        defaultCapture={quickAddDefault}
-        onOpenChange={setQuickAddOpen}
-        open={quickAddOpen}
-      />
+      {quickAddOpen ? (
+        <Suspense fallback={null}>
+          <QuickAddDialog
+            defaultCapture={quickAddDefault}
+            onOpenChange={setQuickAddOpen}
+            open={quickAddOpen}
+          />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

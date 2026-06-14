@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
 
-import { DirectApiError } from "@/repositories/direct-api/client";
 import type {
   AccountUserDto,
   ChangePasswordRequestDto,
@@ -10,15 +9,7 @@ import type {
   RegisterRequestDto,
   UpdateProfileRequestDto,
 } from "@/repositories/direct-api/dtos";
-
-import {
-  changePassword,
-  loginWithPassword,
-  logoutSession,
-  refreshSession,
-  registerAccount,
-  updateProfile,
-} from "./authApi";
+import { getDirectApiErrorCode } from "@/repositories/direct-api/errorGuards";
 
 type StoredAuthSession = {
   accessToken: string;
@@ -70,6 +61,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const login = useCallback(
     async (input: LoginRequestDto) => {
+      const { loginWithPassword } = await import("./authApi");
       commitAuthResponse(await loginWithPassword(input));
     },
     [commitAuthResponse],
@@ -77,6 +69,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const register = useCallback(
     async (input: RegisterRequestDto) => {
+      const { registerAccount } = await import("./authApi");
       commitAuthResponse(await registerAccount(input));
     },
     [commitAuthResponse],
@@ -88,6 +81,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         throw new Error("profile_update_requires_session");
       }
 
+      const { updateProfile } = await import("./authApi");
       const response = await updateProfile(session.accessToken, input);
       const nextSession = { ...session, user: response.user };
 
@@ -106,6 +100,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         throw new Error("password_change_requires_session");
       }
 
+      const { changePassword } = await import("./authApi");
       await changePassword(session.accessToken, input);
       setErrorCode(null);
     },
@@ -120,6 +115,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setErrorCode(null);
 
     if (accessToken && getOnlineState()) {
+      const { logoutSession } = await import("./authApi");
       await logoutSession(accessToken).catch(() => undefined);
     }
   }, [session?.accessToken]);
@@ -153,8 +149,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     let isActive = true;
+    const refreshToken = session.refreshToken;
 
-    refreshSession(session.refreshToken)
+    async function refreshActiveSession() {
+      const { refreshSession } = await import("./authApi");
+
+      return refreshSession(refreshToken);
+    }
+
+    refreshActiveSession()
       .then((response) => {
         if (isActive) {
           commitAuthResponse(response);
@@ -165,8 +168,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
 
-        if (error instanceof DirectApiError) {
-          setErrorCode(error.detail.code);
+        const apiErrorCode = getDirectApiErrorCode(error);
+
+        if (apiErrorCode !== null) {
+          setErrorCode(apiErrorCode);
           clearStoredSession();
           setSession(null);
           setRefreshStatus("ready");

@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { lazy, Suspense, useState, type ComponentType } from "react";
 
-import { ItemFlowDialog } from "@/features/items/ItemDialogs";
 import {
   EmptyState,
   ItemSection,
@@ -12,6 +11,18 @@ import { usePlanningData } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { buildTodayViewModel } from "@/repositories/local-db/readModels";
 import type { LocalItemRow } from "@/domain/items/schemas";
+
+const ItemFlowDialog = lazy(() =>
+  import("@/features/items/ItemDialogs").then((module) => ({
+    default: module.ItemFlowDialog as ComponentType<{
+      action: ItemAction | null;
+      areas: ReturnType<typeof usePlanningData>["areas"];
+      item: LocalItemRow | null;
+      onOpenChange: (open: boolean) => void;
+      open: boolean;
+    }>,
+  })),
+);
 
 export function TodayPage() {
   const { t } = useTranslation();
@@ -67,17 +78,21 @@ export function TodayPage() {
           title={t("empty.today.title")}
         />
       )}
-      <ItemFlowDialog
-        action={activeFlow?.action ?? null}
-        areas={data.areas}
-        item={activeFlow?.item ?? null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setActiveFlow(null);
-          }
-        }}
-        open={activeFlow !== null}
-      />
+      {activeFlow ? (
+        <Suspense fallback={null}>
+          <ItemFlowDialog
+            action={activeFlow.action}
+            areas={data.areas}
+            item={activeFlow.item}
+            onOpenChange={(open) => {
+              if (!open) {
+                setActiveFlow(null);
+              }
+            }}
+            open
+          />
+        </Suspense>
+      ) : null}
     </PageFrame>
   );
 }

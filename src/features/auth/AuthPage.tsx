@@ -4,9 +4,9 @@ import { useState, type FormEvent } from "react";
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/Field";
 import { usePlanningData, usePlanningMutations } from "@/features/planning/usePlanningData";
-import { DirectApiError } from "@/repositories/direct-api/client";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { getDefaultLocale } from "@/i18n/messages";
+import { getDirectApiErrorCode } from "@/repositories/direct-api/errorGuards";
 
 import { useAuth } from "./AuthProvider";
 import styles from "./AuthPage.module.css";
@@ -44,10 +44,10 @@ export function AuthPage() {
         });
       }
     } catch (error) {
+      const apiErrorCode = getDirectApiErrorCode(error);
+
       setErrorKey(
-        error instanceof DirectApiError
-          ? `error.code.${error.detail.code}`
-          : "error.code.service_unavailable",
+        apiErrorCode !== null ? `error.code.${apiErrorCode}` : "error.code.service_unavailable",
       );
     } finally {
       setSubmitting(false);

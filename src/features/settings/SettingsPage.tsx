@@ -9,7 +9,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { usePlanningData, usePlanningMutations } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { getDefaultLocale } from "@/i18n/messages";
-import { DirectApiError } from "@/repositories/direct-api/client";
+import { getDirectApiErrorCode } from "@/repositories/direct-api/errorGuards";
 import { saveBackgroundAsset, validateBackgroundImage } from "@/styles/backgroundAssets";
 import { useTheme, type ThemeMode } from "@/styles/ThemeProvider";
 
@@ -259,9 +259,11 @@ function ProfileForm({
       await onUpdateProfile({ display_name: displayName.trim() || null });
       onMessage(t("settings.profile.saved"));
     } catch (error) {
+      const apiErrorCode = getDirectApiErrorCode(error);
+
       onMessage(
-        error instanceof DirectApiError
-          ? t(`error.code.${error.detail.code}`)
+        apiErrorCode !== null
+          ? t(`error.code.${apiErrorCode}`)
           : t("error.code.service_unavailable"),
       );
     } finally {
@@ -322,9 +324,11 @@ function PasswordForm({
       setNewPassword("");
       onMessage(t("settings.password.saved"));
     } catch (error) {
+      const apiErrorCode = getDirectApiErrorCode(error);
+
       onMessage(
-        error instanceof DirectApiError
-          ? t(`error.code.${error.detail.code}`)
+        apiErrorCode !== null
+          ? t(`error.code.${apiErrorCode}`)
           : t("error.code.service_unavailable"),
       );
     } finally {

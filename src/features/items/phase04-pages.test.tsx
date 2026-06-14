@@ -37,10 +37,8 @@ describe("phase 04 pages and action surfaces", () => {
 
     await screen.findByRole("heading", { name: "Inbox", level: 2 });
     await user.click(firstButton("Quick Add"));
-    await user.type(
-      screen.getByLabelText("Source text"),
-      "Deadline Send renewal decision by 2026-06-16",
-    );
+    const sourceText = await screen.findByLabelText("Source text");
+    await user.type(sourceText, "Deadline Send renewal decision by 2026-06-16");
 
     expect(screen.getByRole("dialog", { name: "Quick Add" })).toBeInTheDocument();
     expect(screen.getByText("Deadline task")).toBeInTheDocument();
@@ -126,7 +124,8 @@ describe("phase 04 pages and action surfaces", () => {
 
     render(<App />);
 
-    const main = await screen.findByRole("main");
+    await screen.findByLabelText("App timezone");
+    const main = screen.getByRole("main");
     expect(within(main).getByLabelText("Language")).toBeInTheDocument();
     expect(within(main).getByLabelText("App timezone")).toBeInTheDocument();
     expect(within(main).queryByLabelText("Date display")).not.toBeInTheDocument();
