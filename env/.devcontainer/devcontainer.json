@@ -2,10 +2,11 @@
   "name": "Yasumi Frontend",
   "build": {
     "dockerfile": "../Dockerfile",
-    "context": "../.."
+    "context": "../..",
+    "target": "dev"
   },
   "workspaceFolder": "/workspace",
-  "forwardPorts": [5173, 4175, 7655, 8081],
+  "forwardPorts": [5173, 4175, 7659, 8081],
   "postCreateCommand": "npm ci",
   "customizations": {
     "vscode": {

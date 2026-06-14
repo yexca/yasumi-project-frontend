@@ -2,7 +2,8 @@
   "name": "Yasumi Frontend",
   "build": {
     "dockerfile": "../env/Dockerfile",
-    "context": ".."
+    "context": "..",
+    "target": "dev"
   },
   "workspaceFolder": "/workspace",
   "forwardPorts": [5173, 4175, 7659, 8081],
