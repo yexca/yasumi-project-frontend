@@ -190,7 +190,15 @@
   padding: 14px 24px;
 }
 
+.topMeta {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
 .dateContext {
+  flex: 0 0 auto;
   margin: 0;
   color: var(--color-text-secondary);
   font-size: 13px;
@@ -329,6 +337,11 @@
 
   .dateContext {
     font-size: 12px;
+  }
+
+  .topMeta {
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .topActions {

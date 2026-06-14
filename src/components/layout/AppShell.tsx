@@ -204,11 +204,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className={styles.workspace}>
         <header className={styles.topBar}>
-          <p className={styles.dateContext}>
-            {getDateOnlyInTimeZone(now, settings.time_zone)} ·{" "}
-            {now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-          </p>
-          <div className={styles.topActions}>
+          <div className={styles.topMeta}>
+            <p className={styles.dateContext}>
+              {getDateOnlyInTimeZone(now, settings.time_zone)} ·{" "}
+              {now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+            </p>
             {effectiveWeather ? (
               <span className={styles.weather} aria-label={t("weather.header.label")}>
                 <CloudSun aria-hidden="true" size={16} />
@@ -217,6 +217,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </span>
               </span>
             ) : null}
+          </div>
+          <div className={styles.topActions}>
             <SyncStatus
               compact
               count={syncState.rejectedCount || syncState.pendingCount}
