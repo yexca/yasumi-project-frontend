@@ -4,12 +4,21 @@ import type { PropsWithChildren } from "react";
 import { DirectApiError } from "@/repositories/direct-api/client";
 import type {
   AccountUserDto,
+  ChangePasswordRequestDto,
   AuthResponseDto,
   LoginRequestDto,
   RegisterRequestDto,
+  UpdateProfileRequestDto,
 } from "@/repositories/direct-api/dtos";
 
-import { loginWithPassword, logoutSession, refreshSession, registerAccount } from "./authApi";
+import {
+  changePassword,
+  loginWithPassword,
+  logoutSession,
+  refreshSession,
+  registerAccount,
+  updateProfile,
+} from "./authApi";
 
 type StoredAuthSession = {
   accessToken: string;
@@ -23,11 +32,13 @@ type AuthStatus = "checking" | "signed_out" | "signed_in" | "offline" | "blocked
 type AuthContextValue = {
   errorCode: string | null;
   isOffline: boolean;
+  changePassword: (input: ChangePasswordRequestDto) => Promise<void>;
   login: (input: LoginRequestDto) => Promise<void>;
   logout: () => Promise<void>;
   register: (input: RegisterRequestDto) => Promise<void>;
   session: StoredAuthSession | null;
   status: AuthStatus;
+  updateProfile: (input: UpdateProfileRequestDto) => Promise<AccountUserDto>;
 };
 
 const AUTH_STORAGE_KEY = "yasumi:auth-session";
@@ -69,6 +80,36 @@ export function AuthProvider({ children }: PropsWithChildren) {
       commitAuthResponse(await registerAccount(input));
     },
     [commitAuthResponse],
+  );
+
+  const updateProfileAction = useCallback(
+    async (input: UpdateProfileRequestDto) => {
+      if (!session) {
+        throw new Error("profile_update_requires_session");
+      }
+
+      const response = await updateProfile(session.accessToken, input);
+      const nextSession = { ...session, user: response.user };
+
+      persistSession(nextSession);
+      setSession(nextSession);
+      setErrorCode(null);
+
+      return response.user;
+    },
+    [session],
+  );
+
+  const changePasswordAction = useCallback(
+    async (input: ChangePasswordRequestDto) => {
+      if (!session) {
+        throw new Error("password_change_requires_session");
+      }
+
+      await changePassword(session.accessToken, input);
+      setErrorCode(null);
+    },
+    [session],
   );
 
   const logout = useCallback(async () => {
@@ -155,14 +196,26 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const value = useMemo<AuthContextValue>(
     () => ({
       errorCode,
+      changePassword: changePasswordAction,
       isOffline,
       login,
       logout,
       register,
       session,
       status,
+      updateProfile: updateProfileAction,
     }),
-    [errorCode, isOffline, login, logout, register, session, status],
+    [
+      changePasswordAction,
+      errorCode,
+      isOffline,
+      login,
+      logout,
+      register,
+      session,
+      status,
+      updateProfileAction,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

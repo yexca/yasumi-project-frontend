@@ -46,6 +46,34 @@ export const loginRequestDtoSchema = z.object({
 
 export type LoginRequestDto = z.infer<typeof loginRequestDtoSchema>;
 
+export const profileResponseDtoSchema = z.object({
+  user: accountUserDtoSchema,
+});
+
+export type ProfileResponseDto = z.infer<typeof profileResponseDtoSchema>;
+
+export const updateProfileRequestDtoSchema = z.object({
+  display_name: z.string().nullable(),
+});
+
+export type UpdateProfileRequestDto = z.infer<typeof updateProfileRequestDtoSchema>;
+
+export const changePasswordRequestDtoSchema = z.object({
+  current_password: z.string().min(1),
+  new_password: z.string().min(1),
+});
+
+export type ChangePasswordRequestDto = z.infer<typeof changePasswordRequestDtoSchema>;
+
+export const weatherResponseDtoSchema = z.object({
+  city: z.string().min(1),
+  summary: z.string().min(1),
+  temperature: z.number(),
+  unit: z.literal("C"),
+});
+
+export type WeatherResponseDto = z.infer<typeof weatherResponseDtoSchema>;
+
 export const refreshRequestDtoSchema = z.object({
   refresh_token: z.string().min(1),
 });
@@ -79,6 +107,14 @@ export function parseApiErrorDto(input: unknown): ApiErrorDto {
   return apiErrorDtoSchema.parse(input);
 }
 
+export function parseProfileResponseDto(input: unknown): ProfileResponseDto {
+  return profileResponseDtoSchema.parse(input);
+}
+
 export function parseSyncTokenResponseDto(input: unknown): SyncTokenResponseDto {
   return syncTokenResponseDtoSchema.parse(input);
+}
+
+export function parseWeatherResponseDto(input: unknown): WeatherResponseDto {
+  return weatherResponseDtoSchema.parse(input);
 }

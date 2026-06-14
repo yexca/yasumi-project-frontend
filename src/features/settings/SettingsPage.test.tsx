@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
+import { AuthProvider } from "@/features/auth/AuthProvider";
 import { PlanningDataProvider } from "@/features/planning/usePlanningData";
 import { I18nProvider } from "@/i18n/I18nProvider";
+import { seedAuthSession } from "@/test/setup";
 import { ThemeProvider } from "@/styles/ThemeProvider";
 
 import { SettingsPage } from "./SettingsPage";
@@ -13,7 +15,9 @@ function renderSettings() {
     <PlanningDataProvider>
       <I18nProvider>
         <ThemeProvider>
-          <SettingsPage />
+          <AuthProvider>
+            <SettingsPage />
+          </AuthProvider>
         </ThemeProvider>
       </I18nProvider>
     </PlanningDataProvider>,
@@ -21,6 +25,10 @@ function renderSettings() {
 }
 
 describe("SettingsPage", () => {
+  beforeEach(() => {
+    seedAuthSession();
+  });
+
   it("stores a validated custom local background image", async () => {
     const user = userEvent.setup();
     const image = new File(["image-bytes"], "background.png", { type: "image/png" });
@@ -82,5 +90,14 @@ describe("SettingsPage", () => {
     expect(screen.queryByLabelText("Date display")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Date-only preview")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Local date-time preview")).not.toBeInTheDocument();
+  });
+
+  it("shows personal profile, password, and weather city settings", () => {
+    renderSettings();
+
+    expect(screen.getByLabelText("Display name")).toBeInTheDocument();
+    expect(screen.getByLabelText("Current password")).toBeInTheDocument();
+    expect(screen.getByLabelText("New password")).toBeInTheDocument();
+    expect(screen.getByLabelText("Weather city")).toHaveValue("Tokyo");
   });
 });

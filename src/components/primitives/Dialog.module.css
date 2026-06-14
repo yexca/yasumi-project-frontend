@@ -6,6 +6,12 @@
 }
 
 .content {
+  --dialog-surface: #ffffff;
+  --dialog-subtle: #f2f3ef;
+  --dialog-border: #d9dad3;
+  --dialog-text: #20201e;
+  --dialog-text-secondary: #60615b;
+
   position: fixed;
   top: 50%;
   left: 50%;
@@ -15,9 +21,10 @@
   max-height: calc(100vh - 32px);
   gap: var(--space-4);
   overflow: auto;
-  border: 1px solid var(--color-border-default);
+  border: 1px solid var(--dialog-border);
   border-radius: var(--radius-card);
-  background: var(--color-surface-panel);
+  background: var(--dialog-surface);
+  color: var(--dialog-text);
   box-shadow: var(--shadow-overlay);
   padding: var(--space-4);
   transform: translate(-50%, -50%);
@@ -30,13 +37,26 @@
 
 .title {
   margin: 0;
-  color: var(--color-text-primary);
+  color: var(--dialog-text);
   font-size: var(--font-size-section-title);
   font-weight: 740;
 }
 
 .description {
   margin: 0;
-  color: var(--color-text-secondary);
+  color: var(--dialog-text-secondary);
   font-size: var(--font-size-body);
+}
+
+.content :global(input),
+.content :global(textarea),
+.content :global(select) {
+  border-color: var(--dialog-border);
+  background: var(--dialog-surface);
+  color: var(--dialog-text);
+}
+
+.content :global(.surface-row),
+.content :global(dl > div) {
+  background: var(--dialog-subtle);
 }

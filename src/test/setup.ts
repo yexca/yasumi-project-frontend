@@ -103,11 +103,59 @@ Object.defineProperty(globalThis, "crypto", {
 URL.createObjectURL = vi.fn(() => "blob:test-background");
 URL.revokeObjectURL = vi.fn();
 
+const defaultFetchMock = (input: RequestInfo | URL): Promise<Response> => {
+  const url =
+    typeof input === "string" ? input : input instanceof Request ? input.url : input.toString();
+
+  if (url.includes("/v1/profile/password")) {
+    return Promise.resolve(new Response(null, { status: 204 }));
+  }
+
+  if (url.includes("/v1/profile")) {
+    return Promise.resolve(
+      Response.json({
+        user: {
+          id: "test-user",
+          username: "test-user",
+          email: "test-user@example.com",
+          display_name: "Quiet Planner",
+        },
+      }),
+    );
+  }
+
+  if (url.includes("/v1/weather")) {
+    return Promise.resolve(
+      Response.json({
+        city: "Tokyo",
+        summary: "Partly cloudy",
+        temperature: 24,
+        unit: "C",
+      }),
+    );
+  }
+
+  return Promise.resolve(
+    Response.json(
+      {
+        code: "service_unavailable",
+        fields: {},
+        message: "Unhandled test request.",
+        retryable: true,
+      },
+      { status: 503 },
+    ),
+  );
+};
+
+globalThis.fetch = vi.fn(defaultFetchMock);
+
 afterEach(() => {
   cleanup();
   localStorage.clear();
   testIndexedDbStores.clear();
   vi.clearAllMocks();
+  vi.mocked(fetch).mockImplementation(defaultFetchMock);
 });
 
 export function seedAuthSession() {

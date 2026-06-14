@@ -26,6 +26,7 @@ type ItemListSelectionContextValue = {
   areas: AreaDto[];
   selectedItem: LocalItemRow | null;
   selectItem: (item: LocalItemRow) => void;
+  showCompletionUndo: (item: LocalItemRow) => void;
 };
 
 const ItemListSelectionContext = createContext<ItemListSelectionContextValue | null>(null);
@@ -69,11 +70,19 @@ export function PageFrame({
   title,
 }: PageFrameProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [undoItem, setUndoItem] = useState<LocalItemRow | null>(null);
+  const { restoreItemSnapshot } = usePlanningMutations();
+  const { t } = useTranslation();
   const selectedItem = itemsForDetail.find((item) => item.id === selectedItemId) ?? null;
 
   return (
     <ItemListSelectionContext.Provider
-      value={{ areas, selectedItem, selectItem: (item) => setSelectedItemId(item.id) }}
+      value={{
+        areas,
+        selectedItem,
+        selectItem: (item) => setSelectedItemId(item.id),
+        showCompletionUndo: setUndoItem,
+      }}
     >
       <div className={styles.pageGrid}>
         <ContentColumn>
@@ -88,6 +97,20 @@ export function PageFrame({
           />
         ) : null}
       </div>
+      {undoItem ? (
+        <div className={styles.toast} role="status">
+          <span>{t("item.completionToast.completed")}</span>
+          <Button
+            onClick={() => {
+              restoreItemSnapshot(undoItem);
+              setUndoItem(null);
+            }}
+            variant="quiet"
+          >
+            {t("item.completionToast.undo")}
+          </Button>
+        </div>
+      ) : null}
     </ItemListSelectionContext.Provider>
   );
 }
@@ -145,8 +168,7 @@ type PlanningItemRowProps = {
 export function PlanningItemRow({ areas, item, onAction, reasons, state }: PlanningItemRowProps) {
   const { t } = useTranslation();
   const selection = useContext(ItemListSelectionContext);
-  const { getItemSyncState, restoreItemSnapshot, runItemAction } = usePlanningMutations();
-  const [undoItem, setUndoItem] = useState<LocalItemRow | null>(null);
+  const { getItemSyncState, runItemAction } = usePlanningMutations();
   const areaName = useMemo(
     () => areas.find((area) => area.id === item.area_id)?.name,
     [areas, item.area_id],
@@ -176,53 +198,37 @@ export function PlanningItemRow({ areas, item, onAction, reasons, state }: Plann
     const result = runItemAction(item.id, "complete");
 
     if (result.ok) {
-      setUndoItem(previous);
+      selection?.showCompletionUndo(previous);
     }
   }
 
   return (
-    <>
-      <DenseItemRow
-        actions={<ItemOverflowActions item={item} onAction={onAction} />}
-        area={areaName}
-        date={date}
-        isSelected={selection?.selectedItem?.id === item.id}
-        leading={getTypeMarker(item.item_type)}
-        moreActionLabel={t("item.action.more")}
-        onComplete={toggleCompletion}
-        onSelect={() => selection?.selectItem(item)}
-        completeActionLabel={t(
-          item.status === "completed" ? "item.action.reopen" : "item.action.complete",
-        )}
-        completeDisabled={!canComplete}
-        reasons={reasons?.map((reason) => t(reasonKeyToMessageKey(reason)))}
-        state={rowState}
-        stateLabel={
-          syncState === "pending"
-            ? t("sync.itemPending")
-            : syncState === "rejected"
-              ? t("sync.itemRejected")
-              : stateKey
-                ? t(stateKey)
-                : undefined
-        }
-        title={item.title}
-      />
-      {undoItem ? (
-        <div className={styles.toast} role="status">
-          <span>{t("item.completionToast.completed")}</span>
-          <Button
-            onClick={() => {
-              restoreItemSnapshot(undoItem);
-              setUndoItem(null);
-            }}
-            variant="quiet"
-          >
-            {t("item.completionToast.undo")}
-          </Button>
-        </div>
-      ) : null}
-    </>
+    <DenseItemRow
+      actions={<ItemOverflowActions item={item} onAction={onAction} />}
+      area={areaName}
+      date={date}
+      isSelected={selection?.selectedItem?.id === item.id}
+      leading={getTypeMarker(item.item_type)}
+      moreActionLabel={t("item.action.more")}
+      onComplete={toggleCompletion}
+      onSelect={() => selection?.selectItem(item)}
+      completeActionLabel={t(
+        item.status === "completed" ? "item.action.reopen" : "item.action.complete",
+      )}
+      completeDisabled={!canComplete}
+      reasons={reasons?.map((reason) => t(reasonKeyToMessageKey(reason)))}
+      state={rowState}
+      stateLabel={
+        syncState === "pending"
+          ? t("sync.itemPending")
+          : syncState === "rejected"
+            ? t("sync.itemRejected")
+            : stateKey
+              ? t(stateKey)
+              : undefined
+      }
+      title={item.title}
+    />
   );
 }
 
@@ -239,14 +245,12 @@ function ItemDetailPane({
   const { getItemSyncState } = usePlanningMutations();
   const areaName = areas.find((area) => area.id === item.area_id)?.name ?? t("area.picker.none");
   const syncState = getItemSyncState(item.id);
+  const markdownBody = buildTaskMarkdown(item);
 
   return (
     <aside className={styles.detailPane} aria-label={t("item.detail.title")}>
       <div className={styles.detailHeader}>
-        <div>
-          <p className={styles.detailEyebrow}>{t(itemTypeToMessageKey(item.item_type))}</p>
-          <h3>{item.title}</h3>
-        </div>
+        <p className={styles.detailEyebrow}>{t(itemTypeToMessageKey(item.item_type))}</p>
         <IconButton
           aria-label={t("common.close")}
           icon={<X aria-hidden="true" size={17} />}
@@ -254,7 +258,7 @@ function ItemDetailPane({
           tooltip={t("common.close")}
         />
       </div>
-      {item.note ? <p className={styles.detailNote}>{item.note}</p> : null}
+      <div className={styles.markdownBody}>{renderMarkdown(markdownBody)}</div>
       <dl className={styles.detailList}>
         <DetailRow label={t("item.field.status")} value={t(`item.state.${item.status}`)} />
         <DetailRow label={t("area.picker.label")} value={areaName} />
@@ -274,6 +278,72 @@ function ItemDetailPane({
       </dl>
     </aside>
   );
+}
+
+function buildTaskMarkdown(item: LocalItemRow): string {
+  const body = item.note?.trim();
+
+  return body ? `# ${item.title}\n\n${body}` : `# ${item.title}`;
+}
+
+function renderMarkdown(markdown: string): ReactNode[] {
+  return markdown
+    .split(/\n{2,}/)
+    .map((block, index) => renderMarkdownBlock(block.trim(), index))
+    .filter((node): node is ReactNode => node !== null);
+}
+
+function renderMarkdownBlock(block: string, index: number): ReactNode | null {
+  if (!block) {
+    return null;
+  }
+
+  if (block.startsWith("# ")) {
+    return <h3 key={index}>{renderInlineMarkdown(block.slice(2))}</h3>;
+  }
+
+  if (block.startsWith("## ")) {
+    return <h4 key={index}>{renderInlineMarkdown(block.slice(3))}</h4>;
+  }
+
+  const lines = block.split("\n");
+  if (lines.every((line) => line.trim().startsWith("- "))) {
+    return (
+      <ul key={index}>
+        {lines.map((line) => (
+          <li key={line}>{renderInlineMarkdown(line.trim().slice(2))}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  return <p key={index}>{renderInlineMarkdown(block)}</p>;
+}
+
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const pattern = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(pattern)) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    const token = match[0];
+    if (token.startsWith("**")) {
+      nodes.push(<strong key={`${match.index}-${token}`}>{token.slice(2, -2)}</strong>);
+    } else {
+      nodes.push(<code key={`${match.index}-${token}`}>{token.slice(1, -1)}</code>);
+    }
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {

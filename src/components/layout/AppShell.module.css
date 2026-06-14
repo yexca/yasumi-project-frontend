@@ -125,6 +125,31 @@
   font-weight: 560;
 }
 
+.syncStatus[data-sync-mode="synced"],
+.syncStatusCompact[data-sync-mode="synced"] {
+  border-color: color-mix(in srgb, var(--color-success-default) 34%, var(--color-border-default));
+  background: var(--color-success-soft);
+  color: var(--color-success-default);
+}
+
+.syncStatus[data-sync-mode="offline"],
+.syncStatusCompact[data-sync-mode="offline"],
+.syncStatus[data-sync-mode="blocked"],
+.syncStatusCompact[data-sync-mode="blocked"] {
+  border-color: color-mix(in srgb, var(--color-text-muted) 34%, var(--color-border-default));
+  background: var(--color-surface-subtle);
+  color: var(--color-text-secondary);
+}
+
+.syncStatus[data-sync-mode="failed"],
+.syncStatusCompact[data-sync-mode="failed"],
+.syncStatus[data-sync-mode="rejected"],
+.syncStatusCompact[data-sync-mode="rejected"] {
+  border-color: color-mix(in srgb, var(--color-danger-default) 34%, var(--color-border-default));
+  background: var(--color-danger-soft);
+  color: var(--color-danger-default);
+}
+
 .syncStatus {
   margin-top: auto;
 }
@@ -159,6 +184,21 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.weather {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 .utilitySelect {
@@ -271,6 +311,15 @@
     padding: 10px 14px;
   }
 
+  .dateContext {
+    font-size: 12px;
+  }
+
+  .topActions {
+    min-width: 0;
+    gap: 6px;
+  }
+
   .topBar h1 {
     font-size: 20px;
   }
@@ -310,6 +359,28 @@
 
   .mobileAddButton {
     display: inline-flex;
+    bottom: 92px;
+  }
+
+  .weather {
+    max-width: 112px;
+    overflow: hidden;
+    padding: 0 8px;
+    text-overflow: ellipsis;
+  }
+
+  .weather span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .utilitySelect {
+    display: none;
+  }
+
+  .userButton {
+    display: none;
   }
 }
 .navQuickAdd {

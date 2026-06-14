@@ -69,6 +69,12 @@
   width: 100%;
 }
 
+.button:disabled,
+.iconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 @media (max-width: 640px) {
   .iconButton {
     width: var(--size-icon-button-touch);

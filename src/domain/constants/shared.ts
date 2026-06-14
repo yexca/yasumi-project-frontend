@@ -144,6 +144,7 @@ export const ERROR_FIELD_KEYS = [
   "default_time_zone_mode",
   "today_primary_lookahead_days",
   "deadline_awareness_days",
+  "weather_city",
 ] as const;
 
 export type ErrorFieldKey = (typeof ERROR_FIELD_KEYS)[number];
@@ -158,6 +159,7 @@ export const SETTINGS_FIELD_KEYS = [
   "default_time_zone_mode",
   "today_primary_lookahead_days",
   "deadline_awareness_days",
+  "weather_city",
 ] as const;
 
 export type SettingsFieldKey = (typeof SETTINGS_FIELD_KEYS)[number];

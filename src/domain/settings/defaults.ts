@@ -19,6 +19,7 @@ export type UserSettingsDefaults = {
   default_time_zone_mode: DefaultTimeZoneMode;
   today_primary_lookahead_days: number;
   deadline_awareness_days: number;
+  weather_city: string;
 };
 
 const REGIONAL_DEFAULTS = {
@@ -58,6 +59,7 @@ export function buildDefaultUserSettings(
     default_time_zone_mode: "floating",
     today_primary_lookahead_days: 3,
     deadline_awareness_days: 14,
+    weather_city: "Tokyo",
   };
 }
 
@@ -122,10 +124,15 @@ export function isUserSettingsDefaults(value: unknown): value is UserSettingsDef
     TIME_DISPLAY_FORMATS.includes(settings.time_display_format as TimeDisplayFormat) &&
     settings.default_time_zone_mode === "floating" &&
     isPositiveInteger(settings.today_primary_lookahead_days) &&
-    isPositiveInteger(settings.deadline_awareness_days)
+    isPositiveInteger(settings.deadline_awareness_days) &&
+    isNonEmptyString(settings.weather_city)
   );
 }
 
 function isPositiveInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value > 0;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0 && value.length <= 120;
 }

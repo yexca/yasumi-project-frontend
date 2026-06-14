@@ -1,4 +1,15 @@
-import { ChevronDown, Languages, LogOut, Moon, Plus, Sun, WifiOff } from "lucide-react";
+import {
+  ChevronDown,
+  CloudSun,
+  Languages,
+  LogOut,
+  Moon,
+  Plus,
+  RotateCw,
+  Sun,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router";
 
@@ -15,6 +26,8 @@ import {
 import { useTranslation } from "@/i18n/I18nProvider";
 import { getDefaultLocale } from "@/i18n/messages";
 import { useTheme } from "@/styles/ThemeProvider";
+import { fetchWeather } from "@/features/weather/weatherApi";
+import type { WeatherResponseDto } from "@/repositories/direct-api/dtos";
 
 import styles from "./AppShell.module.css";
 
@@ -29,6 +42,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [areasOpen, setAreasOpen] = useState(true);
   const [now, setNow] = useState(() => new Date());
+  const [weather, setWeather] = useState<WeatherResponseDto | null>(null);
+  const effectiveWeather = session?.accessToken && status !== "offline" ? weather : null;
   const effectiveSyncMode = status === "blocked" ? "blocked" : syncState.mode;
   const effectiveSyncLabel =
     status === "blocked"
@@ -57,6 +72,29 @@ export function AppShell({ children }: { children: ReactNode }) {
     const timer = window.setInterval(() => setNow(new Date()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!session?.accessToken || !settings.weather_city.trim() || status === "offline") {
+      return;
+    }
+
+    let active = true;
+    fetchWeather(session.accessToken, settings.weather_city)
+      .then((nextWeather) => {
+        if (active) {
+          setWeather(nextWeather);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setWeather(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session?.accessToken, settings.weather_city, status]);
 
   return (
     <div className={styles.shell}>
@@ -137,6 +175,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             {now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
           </p>
           <div className={styles.topActions}>
+            {effectiveWeather ? (
+              <span className={styles.weather} aria-label={t("weather.header.label")}>
+                <CloudSun aria-hidden="true" size={16} />
+                <span>
+                  {effectiveWeather.city} {effectiveWeather.temperature}°{effectiveWeather.unit}
+                </span>
+              </span>
+            ) : null}
             <SyncStatus
               compact
               count={syncState.rejectedCount || syncState.pendingCount}
@@ -206,13 +252,22 @@ type SyncStatusProps = {
 };
 
 function SyncStatus({ compact = false, count, label, mode }: SyncStatusProps) {
+  const icon =
+    mode === "synced" ? (
+      <Wifi aria-hidden="true" size={16} />
+    ) : mode === "pending" ? (
+      <RotateCw aria-hidden="true" size={16} />
+    ) : (
+      <WifiOff aria-hidden="true" size={16} />
+    );
+
   return (
     <button
       className={compact ? styles.syncStatusCompact : styles.syncStatus}
       data-sync-mode={mode}
       type="button"
     >
-      <WifiOff aria-hidden="true" size={16} />
+      {icon}
       <span>{count > 0 ? `${label} (${count})` : label}</span>
     </button>
   );

@@ -131,6 +131,7 @@ export const yasumiPowerSyncSchema = new Schema({
     updated_at: column.text,
     updated_by_device_id: column.text,
     user_id: column.text,
+    weather_city: column.text,
     week_start_day: column.text,
   }),
 });
