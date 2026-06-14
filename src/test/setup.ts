@@ -135,6 +135,18 @@ const defaultFetchMock = (input: RequestInfo | URL): Promise<Response> => {
     );
   }
 
+  if (url.includes("/v1/sync/upload")) {
+    return Promise.resolve(
+      Response.json(
+        {
+          accepted: [],
+          client_batch_id: "test-batch",
+        },
+        { status: 202 },
+      ),
+    );
+  }
+
   return Promise.resolve(
     Response.json(
       {

@@ -6,11 +6,11 @@
 }
 
 .content {
-  --dialog-surface: #ffffff;
-  --dialog-subtle: #f2f3ef;
-  --dialog-border: #d9dad3;
-  --dialog-text: #20201e;
-  --dialog-text-secondary: #60615b;
+  --dialog-surface: var(--color-surface-panel);
+  --dialog-subtle: var(--color-surface-subtle);
+  --dialog-border: var(--color-border-default);
+  --dialog-text: var(--color-text-primary);
+  --dialog-text-secondary: var(--color-text-secondary);
 
   position: fixed;
   top: 50%;

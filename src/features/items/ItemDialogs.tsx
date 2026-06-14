@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/primitives/Button";
 import { Dialog, DialogClose } from "@/components/primitives/Dialog";
@@ -117,6 +117,7 @@ export function ItemFlowDialog({ action, areas, item, onOpenChange, open }: Item
       <ItemEditorDialog
         areas={areas}
         item={item}
+        key={item.id}
         onOpenChange={onOpenChange}
         open={open}
         title={t(action.id === "review" ? "item.detail.title" : "item.editor.title")}
@@ -306,6 +307,61 @@ export function ItemEditorDialog({
   const [titleValue, setTitleValue] = useState(item.title);
   const [areaId, setAreaId] = useState(item.area_id ?? "");
   const [note, setNote] = useState(item.note ?? "");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const lastSavedNote = useRef(item.note ?? "");
+  const savedTimer = useRef<number | null>(null);
+
+  const saveItem = useCallback(
+    (nextNote = note) => {
+      const normalizedNote = nextNote.trim().length > 0 ? nextNote : null;
+
+      editItem(item.id, {
+        areaId: areaId === "" ? null : areaId,
+        note: normalizedNote,
+        title: titleValue,
+      });
+      lastSavedNote.current = normalizedNote ?? "";
+    },
+    [areaId, editItem, item.id, note, titleValue],
+  );
+
+  const persistNote = useCallback(
+    (nextNote = note) => {
+      const normalizedNote = nextNote.trim().length > 0 ? nextNote : null;
+      const normalized = normalizedNote ?? "";
+
+      if (lastSavedNote.current === normalized) {
+        return;
+      }
+
+      if (savedTimer.current !== null) {
+        window.clearTimeout(savedTimer.current);
+      }
+
+      setSaveState("saving");
+      saveItem(nextNote);
+      savedTimer.current = window.setTimeout(() => setSaveState("saved"), 240);
+    },
+    [note, saveItem],
+  );
+
+  useEffect(() => {
+    if (note === lastSavedNote.current) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => persistNote(note), 700);
+    return () => window.clearTimeout(timer);
+  }, [note, persistNote]);
+
+  useEffect(
+    () => () => {
+      if (savedTimer.current !== null) {
+        window.clearTimeout(savedTimer.current);
+      }
+    },
+    [],
+  );
 
   return (
     <Dialog
@@ -335,21 +391,26 @@ export function ItemEditorDialog({
         </Select>
         <TextArea
           label={t("item.field.note")}
-          onChange={(event) => setNote(event.target.value)}
+          onBlur={() => persistNote()}
+          onChange={(event) => {
+            setNote(event.target.value);
+            setSaveState("idle");
+          }}
+          placeholder={t("item.detail.notePlaceholder")}
           rows={5}
           value={note}
         />
+        <div className={styles.noteFeedback} data-save-state={saveState}>
+          <span />
+        </div>
+        {saveState === "saved" ? <p className={styles.copy}>{t("item.detail.saved")}</p> : null}
         <div className={styles.actions}>
           <DialogClose asChild>
             <Button>{t("common.cancel")}</Button>
           </DialogClose>
           <Button
             onClick={() => {
-              editItem(item.id, {
-                areaId: areaId === "" ? null : areaId,
-                note: note.trim().length > 0 ? note : null,
-                title: titleValue,
-              });
+              saveItem();
               onOpenChange(false);
             }}
             variant="primary"

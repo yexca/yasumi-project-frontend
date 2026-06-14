@@ -1,11 +1,15 @@
 .shell {
   display: grid;
+  align-items: start;
   min-height: 100vh;
   grid-template-columns: 252px minmax(0, 1fr);
 }
 
 .sidebar {
   display: flex;
+  position: sticky;
+  top: 0;
+  align-self: start;
   min-height: 100vh;
   flex-direction: column;
   gap: 18px;
@@ -67,6 +71,12 @@
   color: var(--color-text-primary);
 }
 
+.navLink:hover,
+.navGroupToggle:hover,
+.areaNavLink:hover {
+  color: var(--color-text-primary);
+}
+
 .activeNavLink {
   background: var(--color-accent-soft);
   color: var(--color-accent-strong);
@@ -108,6 +118,12 @@
 .areaNavLink:global(.active) {
   background: var(--color-bg-muted);
   color: var(--color-text-primary);
+}
+
+.navLink:hover,
+.navGroupToggle:hover,
+.areaNavLink:hover {
+  background: var(--color-accent-soft);
 }
 
 .syncStatus,

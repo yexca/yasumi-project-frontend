@@ -3,11 +3,11 @@ import {
   ArchiveRestore,
   CalendarClock,
   CheckCircle2,
-  Circle,
   CirclePause,
   FilePenLine,
   Inbox,
   Lightbulb,
+  CalendarDays,
   RotateCcw,
   Trash2,
   XCircle,
@@ -148,7 +148,7 @@ export function getTypeMarker(itemType: ItemType): ReactNode {
     case "inbox":
       return <Inbox aria-hidden="true" size={17} />;
     case "date_task":
-      return <Circle aria-hidden="true" size={17} />;
+      return <CalendarDays aria-hidden="true" size={17} />;
     case "deadline_task":
       return <CalendarClock aria-hidden="true" size={17} />;
     case "idea":

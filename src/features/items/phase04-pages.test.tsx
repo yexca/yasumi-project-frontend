@@ -48,7 +48,7 @@ describe("phase 04 pages and action surfaces", () => {
     expect(screen.getByRole("button", { name: "Save as Inbox" })).toBeInTheDocument();
   });
 
-  it("keeps Inbox completion unavailable while detail stays reviewable", async () => {
+  it("allows Inbox completion while detail stays editable", async () => {
     cleanup();
     window.history.pushState({}, "", "/inbox");
     seedAuthSession();
@@ -58,7 +58,7 @@ describe("phase 04 pages and action surfaces", () => {
 
     await screen.findByRole("heading", { name: "Inbox", level: 2 });
     const completeButtons = screen.getAllByRole("button", { name: "Complete" });
-    expect(completeButtons.some((button) => button.hasAttribute("disabled"))).toBe(true);
+    expect(completeButtons.some((button) => button.hasAttribute("disabled"))).toBe(false);
 
     await user.click(screen.getByText("Ask Mei about the invoice date"));
     const detail = screen.getByLabelText("Item detail");
@@ -68,8 +68,14 @@ describe("phase 04 pages and action surfaces", () => {
     const statusLabel = within(detail).getByText("Status");
     expect(detailHeading).toBeInTheDocument();
     expect(
+      within(detail).getByPlaceholderText("Add a short description here."),
+    ).toBeInTheDocument();
+    expect(
       detailHeading.compareDocumentPosition(statusLabel) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+
+    await user.click(completeButtons[0]!);
+    expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
   });
 
   it("shows city weather in the shell header", async () => {

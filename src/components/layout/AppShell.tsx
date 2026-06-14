@@ -10,7 +10,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router";
 
 import { NAV_ITEMS, ROUTE_PATHS } from "@/app/router/routes";
@@ -21,8 +21,10 @@ import { QuickAddDialog } from "@/features/items/ItemDialogs";
 import {
   usePlanningData,
   usePlanningMutations,
+  useSyncSnapshot,
   useSyncUiState,
 } from "@/features/planning/usePlanningData";
+import { flushLocalSync } from "@/features/sync/syncApi";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { getDefaultLocale } from "@/i18n/messages";
 import { useTheme } from "@/styles/ThemeProvider";
@@ -37,8 +39,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { logout, session, status } = useAuth();
   const { areas, settings, today } = usePlanningData();
   const { updateSettings } = usePlanningMutations();
+  const syncSnapshot = useSyncSnapshot();
   const { resolvedMode, setThemeMode, themeMode } = useTheme();
   const syncState = useSyncUiState();
+  const lastSyncAttemptKey = useRef("");
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [areasOpen, setAreasOpen] = useState(true);
   const [now, setNow] = useState(() => new Date());
@@ -72,6 +76,36 @@ export function AppShell({ children }: { children: ReactNode }) {
     const timer = window.setInterval(() => setNow(new Date()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!session?.accessToken || status !== "signed_in") {
+      return;
+    }
+    if (syncSnapshot.pendingMutations.length === 0) {
+      return;
+    }
+
+    const attemptKey = syncSnapshot.pendingMutations
+      .map((mutation) => mutation.localMutationId)
+      .join(":");
+    if (attemptKey === lastSyncAttemptKey.current) {
+      return;
+    }
+    lastSyncAttemptKey.current = attemptKey;
+
+    let active = true;
+    flushLocalSync(session.accessToken, syncSnapshot.deviceId)
+      .then(() => {
+        if (!active) {
+          return;
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, [session?.accessToken, status, syncSnapshot.deviceId, syncSnapshot.pendingMutations]);
 
   useEffect(() => {
     if (!session?.accessToken || !settings.weather_city.trim() || status === "offline") {

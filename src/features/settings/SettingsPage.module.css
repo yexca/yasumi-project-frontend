@@ -21,18 +21,31 @@
 
 .profileGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
 .formPanel {
   display: grid;
+  align-items: end;
   align-content: start;
   gap: var(--space-3);
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-card);
   background: var(--surface-row-background);
   padding: var(--space-3);
+}
+
+.profileForm {
+  grid-template-columns: minmax(220px, 1fr) minmax(140px, auto) auto;
+}
+
+.passwordForm {
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(160px, auto) auto;
+}
+
+.formPanel > button {
+  min-height: 36px;
+  white-space: nowrap;
 }
 
 .settingRow {
@@ -76,6 +89,11 @@
   font-weight: 640;
 }
 
+.profileForm .message,
+.passwordForm .message {
+  align-self: center;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -86,6 +104,12 @@
 @media (max-width: 640px) {
   .fieldGrid,
   .profileGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .profileForm,
+  .passwordForm {
+    align-items: stretch;
     grid-template-columns: 1fr;
   }
 

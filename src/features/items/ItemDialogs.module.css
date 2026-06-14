@@ -45,6 +45,54 @@
   line-height: 1.55;
 }
 
+.noteFeedback {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  opacity: 0;
+}
+
+.noteFeedback span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -35%;
+  width: 35%;
+  border-radius: inherit;
+  background: var(--color-accent-default);
+}
+
+.noteFeedback[data-save-state="saving"] {
+  opacity: 1;
+}
+
+.noteFeedback[data-save-state="saving"] span {
+  animation: noteSaving 780ms linear infinite;
+}
+
+.noteFeedback[data-save-state="saved"] {
+  opacity: 1;
+  background: var(--color-success-soft);
+}
+
+.noteFeedback[data-save-state="saved"] span {
+  left: 0;
+  width: 100%;
+  background: var(--color-success-default);
+}
+
+@keyframes noteSaving {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(390%);
+  }
+}
+
 .templateList {
   display: grid;
   gap: 8px;

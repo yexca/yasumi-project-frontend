@@ -1,5 +1,14 @@
 import { X } from "lucide-react";
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { DenseItemRow, type DenseItemRowState } from "@/components/items/DenseItemRow";
 import { Button, IconButton } from "@/components/primitives/Button";
@@ -93,6 +102,7 @@ export function PageFrame({
           <ItemDetailPane
             areas={areas}
             item={selectedItem}
+            key={selectedItem.id}
             onClose={() => setSelectedItemId(null)}
           />
         ) : null}
@@ -181,7 +191,6 @@ export function PlanningItemRow({ areas, item, onAction, reasons, state }: Plann
     item.status !== "abandoned" &&
     item.deleted_at === null &&
     item.archived_at === null &&
-    item.item_type !== "inbox" &&
     item.hidden_reason === null;
 
   function toggleCompletion() {
@@ -242,10 +251,56 @@ function ItemDetailPane({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const { getItemSyncState } = usePlanningMutations();
+  const { editItem, getItemSyncState } = usePlanningMutations();
+  const [note, setNote] = useState(item.note ?? "");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const lastSavedNote = useRef(item.note ?? "");
+  const savedTimer = useRef<number | null>(null);
   const areaName = areas.find((area) => area.id === item.area_id)?.name ?? t("area.picker.none");
   const syncState = getItemSyncState(item.id);
-  const markdownBody = buildTaskMarkdown(item);
+
+  const persistNote = useCallback(
+    (nextValue = note) => {
+      const nextNote = nextValue.trim().length > 0 ? nextValue : null;
+      const normalized = nextNote ?? "";
+
+      if (lastSavedNote.current === normalized) {
+        return;
+      }
+
+      if (savedTimer.current !== null) {
+        window.clearTimeout(savedTimer.current);
+      }
+
+      setSaveState("saving");
+      editItem(item.id, {
+        areaId: item.area_id,
+        note: nextNote,
+        title: item.title,
+      });
+      lastSavedNote.current = normalized;
+      savedTimer.current = window.setTimeout(() => setSaveState("saved"), 240);
+    },
+    [editItem, item.area_id, item.id, item.title, note],
+  );
+
+  useEffect(() => {
+    if (note === lastSavedNote.current) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => persistNote(note), 700);
+    return () => window.clearTimeout(timer);
+  }, [note, persistNote]);
+
+  useEffect(
+    () => () => {
+      if (savedTimer.current !== null) {
+        window.clearTimeout(savedTimer.current);
+      }
+    },
+    [],
+  );
 
   return (
     <aside className={styles.detailPane} aria-label={t("item.detail.title")}>
@@ -258,7 +313,24 @@ function ItemDetailPane({
           tooltip={t("common.close")}
         />
       </div>
-      <div className={styles.markdownBody}>{renderMarkdown(markdownBody)}</div>
+      <div className={styles.markdownBody}>{renderMarkdown(`# ${item.title}`)}</div>
+      <label className={styles.noteEditor}>
+        <span>{t("item.field.note")}</span>
+        <textarea
+          onBlur={() => persistNote()}
+          onChange={(event) => {
+            setNote(event.target.value);
+            setSaveState("idle");
+          }}
+          placeholder={t("item.detail.notePlaceholder")}
+          rows={5}
+          value={note}
+        />
+      </label>
+      <div className={styles.noteFeedback} data-save-state={saveState}>
+        <span />
+      </div>
+      {saveState === "saved" ? <p className={styles.noteState}>{t("item.detail.saved")}</p> : null}
       <dl className={styles.detailList}>
         <DetailRow label={t("item.field.status")} value={t(`item.state.${item.status}`)} />
         <DetailRow label={t("area.picker.label")} value={areaName} />
@@ -278,12 +350,6 @@ function ItemDetailPane({
       </dl>
     </aside>
   );
-}
-
-function buildTaskMarkdown(item: LocalItemRow): string {
-  const body = item.note?.trim();
-
-  return body ? `# ${item.title}\n\n${body}` : `# ${item.title}`;
 }
 
 function renderMarkdown(markdown: string): ReactNode[] {

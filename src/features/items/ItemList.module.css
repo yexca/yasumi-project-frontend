@@ -107,6 +107,95 @@
   font-size: 0.92em;
 }
 
+.noteEditor {
+  display: grid;
+  gap: 6px;
+}
+
+.noteEditor span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-metadata);
+  font-weight: 700;
+}
+
+.noteEditor textarea {
+  width: 100%;
+  min-height: 112px;
+  resize: vertical;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  padding: 9px 10px;
+  font: inherit;
+  line-height: 1.5;
+}
+
+.noteEditor textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+.noteEditor textarea:focus {
+  border-color: var(--color-border-strong);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.noteFeedback {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-subtle);
+  opacity: 0;
+}
+
+.noteFeedback span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -35%;
+  width: 35%;
+  border-radius: inherit;
+  background: var(--color-accent-default);
+}
+
+.noteFeedback[data-save-state="saving"] {
+  opacity: 1;
+}
+
+.noteFeedback[data-save-state="saving"] span {
+  animation: noteSaving 780ms linear infinite;
+}
+
+.noteFeedback[data-save-state="saved"] {
+  opacity: 1;
+  background: var(--color-success-soft);
+}
+
+.noteFeedback[data-save-state="saved"] span {
+  left: 0;
+  width: 100%;
+  background: var(--color-success-default);
+}
+
+.noteState {
+  margin: -8px 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-metadata);
+  font-weight: 650;
+}
+
+@keyframes noteSaving {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(390%);
+  }
+}
+
 .detailEyebrow {
   color: var(--color-text-muted);
   font-size: var(--font-size-metadata);

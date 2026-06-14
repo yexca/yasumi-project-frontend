@@ -3,8 +3,10 @@ import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/primitives/Button";
 import { TextInput } from "@/components/primitives/Field";
+import { usePlanningData, usePlanningMutations } from "@/features/planning/usePlanningData";
 import { DirectApiError } from "@/repositories/direct-api/client";
 import { useTranslation } from "@/i18n/I18nProvider";
+import { getDefaultLocale } from "@/i18n/messages";
 
 import { useAuth } from "./AuthProvider";
 import styles from "./AuthPage.module.css";
@@ -14,6 +16,8 @@ type AuthMode = "login" | "register";
 export function AuthPage() {
   const { t } = useTranslation();
   const { login, register } = useAuth();
+  const { settings } = usePlanningData();
+  const { updateSettings } = usePlanningMutations();
   const [mode, setMode] = useState<AuthMode>("login");
   const [identifier, setIdentifier] = useState("");
   const [username, setUsername] = useState("");
@@ -56,6 +60,21 @@ export function AuthPage() {
         <div className={styles.brand}>
           <span className={styles.mark}>Y</span>
           <span>Yasumi</span>
+          <label className={styles.language}>
+            <span className="visually-hidden">{t("settings.language.label")}</span>
+            <select
+              aria-label={t("settings.language.label")}
+              onChange={(event) => {
+                const language = event.target.value as typeof settings.language;
+                updateSettings({ language, locale: getDefaultLocale(language) });
+              }}
+              value={settings.language}
+            >
+              <option value="en">{t("settings.language.en")}</option>
+              <option value="zh-Hans">{t("settings.language.zhHans")}</option>
+              <option value="ja">{t("settings.language.ja")}</option>
+            </select>
+          </label>
         </div>
         <div className={styles.header}>
           <h1 id="auth-title">{t("auth.title")}</h1>

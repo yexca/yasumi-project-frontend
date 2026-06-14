@@ -61,6 +61,12 @@ export type SyncUiState = {
   rejectedCount: number;
 };
 
+export type SyncSnapshot = {
+  deviceId: string;
+  pendingMutations: LocalMutationContext[];
+  rejectedWrites: RejectedWriteContext[];
+};
+
 export type RejectedWriteContext = {
   localMutationId: string;
   clientActionId: string | null;
@@ -572,6 +578,16 @@ export function useSyncUiState(): SyncUiState {
     labelKey: "sync.synced",
     pendingCount: 0,
     rejectedCount: 0,
+  };
+}
+
+export function useSyncSnapshot(): SyncSnapshot {
+  const state = useContext(PlanningDataContext) ?? buildInitialState();
+
+  return {
+    deviceId: state.deviceId,
+    pendingMutations: state.pendingMutations,
+    rejectedWrites: state.rejectedWrites,
   };
 }
 

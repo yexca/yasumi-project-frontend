@@ -270,7 +270,10 @@ function ProfileForm({
   }
 
   return (
-    <form className={styles.formPanel} onSubmit={(event) => void submitProfile(event)}>
+    <form
+      className={[styles.formPanel, styles.profileForm].join(" ")}
+      onSubmit={(event) => void submitProfile(event)}
+    >
       <TextInput
         autoComplete="name"
         label={t("settings.profile.displayName")}
@@ -330,7 +333,10 @@ function PasswordForm({
   }
 
   return (
-    <form className={styles.formPanel} onSubmit={(event) => void submitPassword(event)}>
+    <form
+      className={[styles.formPanel, styles.passwordForm].join(" ")}
+      onSubmit={(event) => void submitPassword(event)}
+    >
       <TextInput
         autoComplete="current-password"
         label={t("settings.password.current")}
