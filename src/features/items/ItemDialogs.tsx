@@ -8,6 +8,7 @@ import { isDateOnly } from "@/domain/time/dateOnly";
 import { usePlanningData, usePlanningMutations } from "@/features/planning/usePlanningData";
 import type { AreaDto, LocalItemRow, RecurringTaskTemplateDto } from "@/domain/items/schemas";
 import { useTranslation } from "@/i18n/I18nProvider";
+import { parseQuickAdd } from "@/features/quick-add/parser";
 
 import type { ItemAction } from "./itemPresentation";
 import styles from "./ItemDialogs.module.css";
@@ -21,11 +22,17 @@ type QuickAddDialogProps = {
 
 export function QuickAddDialog({ onOpenChange, open }: QuickAddDialogProps) {
   const { t } = useTranslation();
+  const data = usePlanningData();
   const { createCapture } = usePlanningMutations();
   const [sourceText, setSourceText] = useState("");
   const preview = useMemo(
-    () => buildQuickAddPreview(sourceText, t("quickAdd.untitled")),
-    [sourceText, t],
+    () =>
+      parseQuickAdd(sourceText, {
+        locale: data.settings.locale,
+        today: data.today,
+        untitled: t("quickAdd.untitled"),
+      }),
+    [data.settings.locale, data.today, sourceText, t],
   );
   const save = (mode: "inbox" | "suggestion") => {
     createCapture({ mode, sourceText });
@@ -50,10 +57,13 @@ export function QuickAddDialog({ onOpenChange, open }: QuickAddDialogProps) {
         />
         <PreviewList
           rows={[
-            [t("quickAdd.preview.title"), preview.title],
-            [t("quickAdd.preview.type"), t(preview.itemTypeKey)],
-            [t("quickAdd.preview.confidence"), t(preview.confidenceKey)],
-            [t("quickAdd.preview.fragments"), preview.fragments],
+            [t("quickAdd.preview.title"), preview.cleanTitle],
+            [t("quickAdd.preview.type"), t(itemTypeToMessageKey(preview.itemTypeSuggestion))],
+            [t("quickAdd.preview.confidence"), t(`quickAdd.confidence.${preview.confidence}`)],
+            [
+              t("quickAdd.preview.fragments"),
+              preview.recognizedFragments.map((fragment) => fragment.text).join(", ") || "-",
+            ],
           ]}
         />
         <div className={styles.actions}>
@@ -461,25 +471,15 @@ function PreviewList({ rows }: { rows: [string, string | number][] }) {
   );
 }
 
-function buildQuickAddPreview(sourceText: string, untitled: string) {
-  const trimmed = sourceText.trim();
-  const hasDate = /\d{4}-\d{2}-\d{2}|tomorrow|today|明日|今日|今天|明天/i.test(trimmed);
-  const hasDeadline = /deadline|due|截止|締切/i.test(trimmed);
-
-  return {
-    title: trimmed.length > 0 ? trimmed.replace(/\s+/g, " ") : untitled,
-    itemTypeKey: hasDeadline
-      ? "item.type.deadlineTask"
-      : hasDate
-        ? "item.type.dateTask"
-        : "item.type.inbox",
-    confidenceKey:
-      hasDate || hasDeadline ? "quickAdd.confidence.medium" : "quickAdd.confidence.low",
-    fragments:
-      hasDate || hasDeadline
-        ? (sourceText
-            .match(/\d{4}-\d{2}-\d{2}|tomorrow|today|deadline|due|明日|今日|今天|明天|截止|締切/gi)
-            ?.join(", ") ?? "-")
-        : "-",
-  };
+function itemTypeToMessageKey(itemType: string) {
+  switch (itemType) {
+    case "date_task":
+      return "item.type.dateTask";
+    case "deadline_task":
+      return "item.type.deadlineTask";
+    case "idea":
+      return "item.type.idea";
+    default:
+      return "item.type.inbox";
+  }
 }

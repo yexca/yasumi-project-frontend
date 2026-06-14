@@ -6,6 +6,7 @@ import {
   useMemo,
   useReducer,
   useRef,
+  useState,
   type PropsWithChildren,
 } from "react";
 
@@ -37,9 +38,10 @@ import {
   isUserSettingsDefaults,
   isValidTimeZone,
 } from "@/domain/settings/defaults";
-import { isDateOnly, type DateOnly } from "@/domain/time/dateOnly";
+import type { DateOnly } from "@/domain/time/dateOnly";
 import { validateStatusTransition } from "@/domain/transitions/status";
 import type { ItemActionId } from "@/features/items/itemPresentation";
+import { parseQuickAdd } from "@/features/quick-add/parser";
 
 export type PlanningData = {
   areas: AreaDto[];
@@ -500,7 +502,27 @@ export function usePlanningMutations(): PlanningMutations {
 
 export function useSyncUiState(): SyncUiState {
   const state = useContext(PlanningDataContext) ?? buildInitialState();
-  const offline = typeof navigator !== "undefined" && "onLine" in navigator && !navigator.onLine;
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator !== "undefined" && "onLine" in navigator ? navigator.onLine : true,
+  );
+  const offline = !isOnline;
+
+  useEffect(() => {
+    function updateOnlineState() {
+      setIsOnline(
+        typeof navigator !== "undefined" && "onLine" in navigator ? navigator.onLine : true,
+      );
+    }
+
+    window.addEventListener("online", updateOnlineState);
+    window.addEventListener("offline", updateOnlineState);
+    updateOnlineState();
+
+    return () => {
+      window.removeEventListener("online", updateOnlineState);
+      window.removeEventListener("offline", updateOnlineState);
+    };
+  }, []);
 
   if (state.rejectedWrites.length > 0) {
     return {
@@ -666,8 +688,12 @@ function createCapture(
   input: QuickAddInput,
   now: string,
 ): { state: PlanningState; result: MutationResult } {
-  const preview = parseQuickAddInput(input.sourceText, state.today);
-  const itemType = input.mode === "inbox" ? "inbox" : preview.itemType;
+  const preview = parseQuickAdd(input.sourceText, {
+    locale: state.settings.locale,
+    today: state.today,
+  });
+  const itemType = input.mode === "inbox" ? "inbox" : preview.itemTypeSuggestion;
+  const captureTitle = input.sourceText.trim().replace(/\s+/g, " ") || "Untitled capture";
   const row = normalizeItemRow({
     id: createId("item"),
     user_id: USER_ID,
@@ -682,18 +708,25 @@ function createCapture(
     updated_by_device_id: state.deviceId,
     revision: 0,
     item_type: itemType,
-    title: preview.title,
+    title: input.mode === "inbox" ? captureTitle : preview.cleanTitle,
     note: null,
     status: "active",
     area_id: null,
-    scheduled_date: itemType === "date_task" ? preview.date : null,
+    scheduled_date: itemType === "date_task" ? (preview.fields.scheduled_date ?? null) : null,
     scheduled_time_zone_mode: itemType === "date_task" ? "floating" : null,
-    deadline_date: itemType === "deadline_task" ? preview.date : null,
-    deadline_time_zone_mode: itemType === "deadline_task" ? "date_only" : null,
+    deadline_date: itemType === "deadline_task" ? (preview.fields.deadline_date ?? null) : null,
+    deadline_time: itemType === "deadline_task" ? (preview.fields.deadline_time ?? null) : null,
+    deadline_time_zone_mode:
+      itemType === "deadline_task"
+        ? ((preview.fields.deadline_time_zone_mode as "date_only" | "floating" | null) ??
+          "date_only")
+        : null,
+    review_date: itemType === "idea" ? (preview.fields.review_date ?? null) : null,
     quick_add_source_text: input.sourceText,
     quick_add_parse_result: {
       confidence: preview.confidence,
-      recognized_fragments: preview.fragments,
+      recognized_fragments: preview.recognizedFragments,
+      warnings: preview.warnings,
     },
   });
   const mutation = buildMutation(state, row.id, "items", "create");
@@ -1046,37 +1079,6 @@ function pickMeaningfulPreviousValue(item: LocalItemRow, newValue: JsonObject): 
   return Object.fromEntries(
     Object.keys(newValue).map((key) => [key, item[key as keyof LocalItemRow] ?? null]),
   );
-}
-
-function parseQuickAddInput(sourceText: string, today: DateOnly) {
-  const normalized = sourceText.trim().replace(/\s+/g, " ");
-  const title = normalized.length > 0 ? normalized : "Untitled capture";
-  const isoDate = normalized.match(/\d{4}-\d{2}-\d{2}/)?.[0];
-  const date = isDateOnly(isoDate ?? "") ? isoDate : relativeDate(normalized, today);
-  const hasDeadline = /deadline|due|截止|締切/i.test(normalized);
-
-  return {
-    confidence: date !== null || hasDeadline ? "medium" : "low",
-    date,
-    fragments: [date, hasDeadline ? "deadline" : null].filter(Boolean),
-    itemType:
-      hasDeadline && date !== null ? "deadline_task" : date !== null ? "date_task" : "inbox",
-    title,
-  } as const;
-}
-
-function relativeDate(text: string, today: DateOnly): DateOnly | null {
-  if (/today|今日|今天/i.test(text)) {
-    return today;
-  }
-
-  if (/tomorrow|明日|明天/i.test(text)) {
-    const date = new Date(`${today}T00:00:00Z`);
-    date.setUTCDate(date.getUTCDate() + 1);
-    return date.toISOString().slice(0, 10);
-  }
-
-  return null;
 }
 
 function createId(prefix: string): string {

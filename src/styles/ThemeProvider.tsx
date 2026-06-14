@@ -235,7 +235,9 @@ export function ThemeProvider({ children }: PropsWithChildren) {
       <div
         className="theme-root"
         data-background={value.hasBackground ? background.mode : "none"}
+        data-background-preference={background.mode}
         data-theme={resolvedMode}
+        data-theme-mode={themeMode}
         style={{ "--app-background-image": backgroundImage } as CSSProperties}
       >
         {children}
