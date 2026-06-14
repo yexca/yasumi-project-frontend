@@ -173,6 +173,29 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     return () => media?.removeEventListener("change", updateResolvedMode);
   }, [themeMode]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const previousTheme = root.getAttribute("data-theme");
+    const previousThemeMode = root.getAttribute("data-theme-mode");
+
+    root.setAttribute("data-theme", resolvedMode);
+    root.setAttribute("data-theme-mode", themeMode);
+
+    return () => {
+      if (previousTheme === null) {
+        root.removeAttribute("data-theme");
+      } else {
+        root.setAttribute("data-theme", previousTheme);
+      }
+
+      if (previousThemeMode === null) {
+        root.removeAttribute("data-theme-mode");
+      } else {
+        root.setAttribute("data-theme-mode", previousThemeMode);
+      }
+    };
+  }, [resolvedMode, themeMode]);
+
   const setThemeMode = useCallback((mode: ThemeMode) => {
     setThemeModeState(mode);
     window.localStorage.setItem(THEME_STORAGE_KEY, mode);

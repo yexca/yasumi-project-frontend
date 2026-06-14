@@ -48,6 +48,8 @@ describe("ThemeProvider", () => {
       "data-theme",
       "dark",
     );
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(document.documentElement).toHaveAttribute("data-theme-mode", "dark");
 
     await user.click(screen.getByRole("button", { name: "Background" }));
     expect(screen.getByTestId("background-state")).toHaveTextContent("off");
