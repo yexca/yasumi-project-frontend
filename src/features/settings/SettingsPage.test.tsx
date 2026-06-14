@@ -55,37 +55,32 @@ describe("SettingsPage", () => {
 
     expect(await screen.findByRole("heading", { name: "设置" })).toBeInTheDocument();
     expect(screen.getByLabelText("语言")).toHaveValue("zh-Hans");
-    expect(screen.getByLabelText("区域设置")).toHaveValue("zh-CN");
+    expect(screen.queryByLabelText("区域设置")).not.toBeInTheDocument();
   });
 
-  it("validates timezone edits before saving them", async () => {
+  it("shows common timezone choices instead of a free-form technical field", () => {
+    renderSettings();
+
+    const timeZone = screen.getByLabelText("App timezone");
+
+    expect(timeZone).toHaveValue("Asia/Tokyo");
+    expect(screen.getByRole("option", { name: "Shanghai" })).toHaveValue("Asia/Shanghai");
+    expect(screen.getByRole("option", { name: "Tokyo" })).toHaveValue("Asia/Tokyo");
+    expect(screen.getByRole("option", { name: "London" })).toHaveValue("Europe/London");
+    expect(screen.getByRole("option", { name: "New York" })).toHaveValue("America/New_York");
+  });
+
+  it("hides fixed display previews and updates timezone from the curated list", async () => {
     const user = userEvent.setup();
 
     renderSettings();
 
     const timeZone = screen.getByLabelText("App timezone");
-    await user.clear(timeZone);
-    await user.type(timeZone, "Mars/Olympus");
-    await user.tab();
+    await user.selectOptions(timeZone, "Asia/Tokyo");
 
-    expect(
-      screen.getByText("Enter a valid IANA timezone, such as Asia/Tokyo."),
-    ).toBeInTheDocument();
-  });
-
-  it("shows fixed standard date and local date-time previews", async () => {
-    const user = userEvent.setup();
-
-    renderSettings();
-
-    const timeZone = screen.getByLabelText("App timezone");
-    await user.clear(timeZone);
-    await user.type(timeZone, "Asia/Tokyo");
-    await user.tab();
-
-    expect(screen.getByLabelText("Date-only preview")).toHaveValue("2026-06-14");
-    expect(await screen.findByLabelText("Local date-time preview")).toHaveValue(
-      "2026-06-14 17:30:45",
-    );
+    expect(timeZone).toHaveValue("Asia/Tokyo");
+    expect(screen.queryByLabelText("Date display")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Date-only preview")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Local date-time preview")).not.toBeInTheDocument();
   });
 });

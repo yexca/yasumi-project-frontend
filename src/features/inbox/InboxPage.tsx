@@ -24,7 +24,12 @@ export function InboxPage() {
   const handleAction: ItemActionHandler = (action, item) => setActiveFlow({ action, item });
 
   return (
-    <PageFrame description={t("page.inbox.description")} title={t("nav.inbox")}>
+    <PageFrame
+      areas={data.areas}
+      description={t("page.inbox.description")}
+      itemsForDetail={rows}
+      title={t("nav.inbox")}
+    >
       <ItemSection
         areas={data.areas}
         empty={

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { App } from "@/app/App";
+import { seedAuthSession } from "@/test/setup";
 
 describe("phase 05 sync UI states", () => {
   afterEach(() => {
@@ -18,10 +19,11 @@ describe("phase 05 sync UI states", () => {
       value: false,
     });
     window.history.pushState({}, "", "/today");
+    seedAuthSession();
 
     render(<App />);
 
-    expect(await screen.findByRole("heading", { name: "Today", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Today", level: 2 })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Offline" })).toHaveLength(2);
   });
 
@@ -31,11 +33,13 @@ describe("phase 05 sync UI states", () => {
       value: true,
     });
     window.history.pushState({}, "", "/inbox");
+    seedAuthSession();
     const user = userEvent.setup();
 
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "Quick Add" }));
+    await screen.findByRole("heading", { name: "Inbox", level: 2 });
+    await user.click(firstButton("Quick Add"));
     await user.type(screen.getByLabelText("Source text"), "Call venue tomorrow");
     await user.click(screen.getByRole("button", { name: "Save as Inbox" }));
 
@@ -44,3 +48,13 @@ describe("phase 05 sync UI states", () => {
     expect(screen.getByText("Saved on this device")).toBeInTheDocument();
   });
 });
+
+function firstButton(name: string): HTMLElement {
+  const [button] = screen.getAllByRole("button", { name });
+
+  if (!button) {
+    throw new Error(`Missing button: ${name}`);
+  }
+
+  return button;
+}

@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, type PropsWithChildren } from "reac
 
 import { usePlanningData } from "@/features/planning/usePlanningData";
 
-import { formatMessage, messages } from "./messages";
+import { detectLanguage, formatMessage, messages } from "./messages";
 
 type TranslationContextValue = {
   language: keyof typeof messages;
@@ -15,7 +15,7 @@ export function I18nProvider({ children }: PropsWithChildren) {
   const { settings } = usePlanningData();
 
   const value = useMemo<TranslationContextValue>(() => {
-    const language = settings.language;
+    const language = messages[settings.language] ? settings.language : detectLanguage();
 
     return {
       language,

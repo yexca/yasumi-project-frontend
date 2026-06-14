@@ -28,7 +28,9 @@ export function AreaDetailPage() {
 
   return (
     <PageFrame
+      areas={data.areas}
       description={t("page.areaDetail.description", { areaId: area?.name ?? areaId ?? "" })}
+      itemsForDetail={rows}
       title={area?.name ?? t("nav.areas")}
     >
       <ItemSection

@@ -50,9 +50,9 @@ describe("primitives", () => {
             icon={<MoreHorizontal aria-hidden="true" size={16} />}
           />
         }
+        completeActionLabel="Complete"
         date="2026-06-14"
         moreActionLabel="More actions"
-        primaryActionLabel="Complete"
         reasons={["Scheduled today"]}
         state="recommended"
         title="Plan second phase visual foundation"

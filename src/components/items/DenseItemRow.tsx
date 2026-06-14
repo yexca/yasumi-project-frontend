@@ -1,5 +1,5 @@
 import { CheckCircle2, Circle, MoreHorizontal } from "lucide-react";
-import type { ReactNode } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 import { IconButton } from "@/components/primitives/Button";
 
@@ -17,12 +17,14 @@ export type DenseItemRowState =
 type DenseItemRowProps = {
   actions?: ReactNode;
   area?: string;
+  completeActionLabel: string;
+  completeDisabled?: boolean;
   date?: string;
+  isSelected?: boolean;
   leading?: ReactNode;
   moreActionLabel: string;
-  onPrimaryAction?: () => void;
-  primaryActionLabel: string;
-  primaryIcon?: ReactNode;
+  onComplete?: () => void;
+  onSelect?: () => void;
   reasons?: string[];
   state?: DenseItemRowState;
   stateLabel?: string;
@@ -32,12 +34,14 @@ type DenseItemRowProps = {
 export function DenseItemRow({
   actions,
   area,
+  completeActionLabel,
+  completeDisabled = false,
   date,
+  isSelected = false,
   leading,
   moreActionLabel,
-  onPrimaryAction,
-  primaryActionLabel,
-  primaryIcon,
+  onComplete,
+  onSelect,
   reasons = [],
   state = "normal",
   stateLabel,
@@ -47,20 +51,41 @@ export function DenseItemRow({
   const isRecommended = state === "recommended";
   const hasStateLabel = stateLabel && (state === "pending" || state === "rejected");
 
+  function stopAction(event: MouseEvent) {
+    event.stopPropagation();
+  }
+
   return (
     <article
-      className={["surface-row", styles.row, isRecommended ? styles.recommended : ""]
+      className={[
+        "surface-row",
+        styles.row,
+        isRecommended ? styles.recommended : "",
+        isSelected ? styles.selected : "",
+      ]
         .filter(Boolean)
         .join(" ")}
+      onClick={onSelect}
+      tabIndex={0}
     >
-      <span className={styles.leading}>
-        {leading ??
-          (isCompleted ? (
+      <IconButton
+        aria-label={completeActionLabel}
+        className={styles.completeButton}
+        disabled={completeDisabled}
+        icon={
+          isCompleted ? (
             <CheckCircle2 aria-hidden="true" size={18} />
           ) : (
             <Circle aria-hidden="true" size={18} />
-          ))}
-      </span>
+          )
+        }
+        onClick={(event) => {
+          stopAction(event);
+          onComplete?.();
+        }}
+        tooltip={completeActionLabel}
+        variant="quiet"
+      />
       <div className={styles.body}>
         <div className={styles.titleLine}>
           <span
@@ -98,13 +123,8 @@ export function DenseItemRow({
           </div>
         ) : null}
       </div>
-      <IconButton
-        aria-label={primaryActionLabel}
-        icon={primaryIcon ?? <CheckCircle2 aria-hidden="true" size={17} />}
-        onClick={onPrimaryAction}
-        tooltip={primaryActionLabel}
-      />
-      <div className={styles.actions}>
+      <span className={styles.leading}>{leading}</span>
+      <div className={styles.actions} onClick={stopAction}>
         {actions ?? (
           <IconButton
             aria-label={moreActionLabel}

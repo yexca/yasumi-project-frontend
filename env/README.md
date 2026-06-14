@@ -27,11 +27,13 @@ docker build -f env/Dockerfile -t yasumi-frontend .
 docker run --rm -it -p 5173:5173 yasumi-frontend
 ```
 
+For full-stack release validation, run the backend repository's root Compose file from `../yasumi-project-backend`; it can build this frontend through `docker-compose.example.yml`.
+
 ## Service Ports
 
 - Frontend dev server: `5173`
 - Frontend preview/E2E support: `4175`
-- Local backend API: `7655`
+- Local backend API: `7659`
 - Local PowerSync service: `8081`
 
 ## Dev Container

@@ -1,9 +1,9 @@
 import { Navigate, createBrowserRouter } from "react-router";
 
-import { AppShell } from "@/components/layout/AppShell";
 import { ArchivePage } from "@/features/archive/ArchivePage";
 import { AreaDetailPage } from "@/features/areas/AreaDetailPage";
 import { AreasPage } from "@/features/areas/AreasPage";
+import { AuthGate } from "@/features/auth/AuthGate";
 import { DeadlinesPage } from "@/features/deadlines/DeadlinesPage";
 import { InboxPage } from "@/features/inbox/InboxPage";
 import { CompletedPage } from "@/features/items/CompletedPage";
@@ -18,7 +18,7 @@ export function createAppRouter() {
   return createBrowserRouter([
     {
       path: ROUTE_PATHS.root,
-      element: <AppShell />,
+      element: <AuthGate />,
       children: [
         { index: true, element: <Navigate to={ROUTE_PATHS.today} replace /> },
         { path: "today", element: <TodayPage /> },

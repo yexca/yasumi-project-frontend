@@ -27,7 +27,12 @@ export function IdeaPoolPage() {
   const handleAction: ItemActionHandler = (action, item) => setActiveFlow({ action, item });
 
   return (
-    <PageFrame description={t("page.ideas.description")} title={t("nav.ideas")}>
+    <PageFrame
+      areas={data.areas}
+      description={t("page.ideas.description")}
+      itemsForDetail={rows}
+      title={t("nav.ideas")}
+    >
       {rows.length > 0 ? (
         <>
           <ItemSection

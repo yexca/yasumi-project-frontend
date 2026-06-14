@@ -16,11 +16,15 @@ import styles from "./ItemDialogs.module.css";
 type ClassificationTarget = "date_task" | "deadline_task" | "idea" | "recurring_template";
 
 type QuickAddDialogProps = {
+  defaultCapture?: {
+    defaultItemType?: "date_task";
+    defaultScheduledDate?: DateOnly;
+  };
   onOpenChange: (open: boolean) => void;
   open: boolean;
 };
 
-export function QuickAddDialog({ onOpenChange, open }: QuickAddDialogProps) {
+export function QuickAddDialog({ defaultCapture, onOpenChange, open }: QuickAddDialogProps) {
   const { t } = useTranslation();
   const data = usePlanningData();
   const { createCapture } = usePlanningMutations();
@@ -35,7 +39,12 @@ export function QuickAddDialog({ onOpenChange, open }: QuickAddDialogProps) {
     [data.settings.locale, data.today, sourceText, t],
   );
   const save = (mode: "inbox" | "suggestion") => {
-    createCapture({ mode, sourceText });
+    createCapture({
+      defaultItemType: defaultCapture?.defaultItemType,
+      defaultScheduledDate: defaultCapture?.defaultScheduledDate,
+      mode,
+      sourceText,
+    });
     setSourceText("");
     onOpenChange(false);
   };

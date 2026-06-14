@@ -39,7 +39,12 @@ export function TodayPage() {
     .filter((section) => section.items.length > 0);
 
   return (
-    <PageFrame description={t("page.today.description")} title={t("nav.today")}>
+    <PageFrame
+      areas={data.areas}
+      description={t("page.today.description")}
+      itemsForDetail={visibleSections.flatMap((section) => section.items)}
+      title={t("nav.today")}
+    >
       {visibleSections.length > 0 ? (
         visibleSections.map((section) => (
           <ItemSection

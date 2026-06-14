@@ -24,7 +24,12 @@ export function CompletedPage() {
   const handleAction: ItemActionHandler = (action, item) => setActiveFlow({ action, item });
 
   return (
-    <PageFrame description={t("page.completed.description")} title={t("nav.completed")}>
+    <PageFrame
+      areas={data.areas}
+      description={t("page.completed.description")}
+      itemsForDetail={rows}
+      title={t("nav.completed")}
+    >
       <ItemSection
         areas={data.areas}
         empty={

@@ -3,10 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import { App } from "@/app/App";
+import { seedAuthSession } from "@/test/setup";
 
 describe("phase 04 pages and action surfaces", () => {
   it("renders Today sections in planning order with recommendation reasons", async () => {
     window.history.pushState({}, "", "/today");
+    seedAuthSession();
 
     render(<App />);
 
@@ -28,11 +30,13 @@ describe("phase 04 pages and action surfaces", () => {
   it("opens Quick Add and shows a deterministic parser preview", async () => {
     cleanup();
     window.history.pushState({}, "", "/inbox");
+    seedAuthSession();
     const user = userEvent.setup();
 
     render(<App />);
 
-    await user.click(await screen.findByRole("button", { name: "Quick Add" }));
+    await screen.findByRole("heading", { name: "Inbox", level: 2 });
+    await user.click(firstButton("Quick Add"));
     await user.type(
       screen.getByLabelText("Source text"),
       "Deadline Send renewal decision by 2026-06-16",
@@ -47,19 +51,21 @@ describe("phase 04 pages and action surfaces", () => {
   it("shows state-specific item actions from one shared path", async () => {
     cleanup();
     window.history.pushState({}, "", "/completed");
+    seedAuthSession();
     const user = userEvent.setup();
 
     render(<App />);
 
     expect(await screen.findByText("Clean up old capture notes")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(firstButton("More actions"));
     expect(screen.getByRole("menuitem", { name: "Archive" })).toBeInTheDocument();
   });
 
   it("renders area shortcuts in sorted order and area-scoped rows", async () => {
     cleanup();
     window.history.pushState({}, "", "/areas/area-work");
+    seedAuthSession();
 
     render(<App />);
 
@@ -76,12 +82,24 @@ describe("phase 04 pages and action surfaces", () => {
   it("includes synced settings and local visual settings on Settings", async () => {
     cleanup();
     window.history.pushState({}, "", "/settings");
+    seedAuthSession();
 
     render(<App />);
 
-    expect(await screen.findByLabelText("Language")).toBeInTheDocument();
-    expect(screen.getByLabelText("App timezone")).toHaveValue("Asia/Tokyo");
-    expect(screen.getByLabelText("Date display")).toHaveValue("YYYY-MM-DD");
+    const main = await screen.findByRole("main");
+    expect(within(main).getByLabelText("Language")).toBeInTheDocument();
+    expect(within(main).getByLabelText("App timezone")).toBeInTheDocument();
+    expect(within(main).queryByLabelText("Date display")).not.toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
   });
 });
+
+function firstButton(name: string): HTMLElement {
+  const [button] = screen.getAllByRole("button", { name });
+
+  if (!button) {
+    throw new Error(`Missing button: ${name}`);
+  }
+
+  return button;
+}

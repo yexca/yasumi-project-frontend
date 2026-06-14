@@ -21,6 +21,7 @@ export function AreasPage() {
   const { t } = useTranslation();
   const data = usePlanningData();
   const areas = queryAreaRows(data.areas);
+  const detailRows = areas.flatMap((area) => queryAreaItemRows(data.items, area.id));
   const [deleteArea, setDeleteArea] = useState<AreaDto | null>(null);
   const [activeFlow, setActiveFlow] = useState<{
     action: ItemAction;
@@ -33,7 +34,9 @@ export function AreasPage() {
       actions={
         <Button icon={<Plus aria-hidden="true" size={16} />}>{t("area.action.create")}</Button>
       }
+      areas={data.areas}
       description={t("page.areas.description")}
+      itemsForDetail={detailRows}
       title={t("nav.areas")}
     >
       {areas.length > 0 ? (

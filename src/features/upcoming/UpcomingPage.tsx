@@ -37,7 +37,9 @@ export function UpcomingPage() {
           {t("recurrence.list.title")}
         </Button>
       }
+      areas={data.areas}
       description={t("page.upcoming.description")}
+      itemsForDetail={rows}
       title={t("nav.upcoming")}
     >
       {groups.length > 0 ? (

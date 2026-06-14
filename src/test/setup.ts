@@ -109,3 +109,20 @@ afterEach(() => {
   testIndexedDbStores.clear();
   vi.clearAllMocks();
 });
+
+export function seedAuthSession() {
+  localStorage.setItem(
+    "yasumi:auth-session",
+    JSON.stringify({
+      accessToken: "test-access-token",
+      expiresAt: "2099-01-01T00:00:00Z",
+      refreshToken: "test-refresh-token",
+      user: {
+        id: "test-user",
+        username: "test-user",
+        email: "test-user@example.com",
+        display_name: "Test User",
+      },
+    }),
+  );
+}

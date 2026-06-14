@@ -24,7 +24,12 @@ export function DeadlinesPage() {
   const handleAction: ItemActionHandler = (action, item) => setActiveFlow({ action, item });
 
   return (
-    <PageFrame description={t("page.deadlines.description")} title={t("nav.deadlines")}>
+    <PageFrame
+      areas={data.areas}
+      description={t("page.deadlines.description")}
+      itemsForDetail={rows}
+      title={t("nav.deadlines")}
+    >
       <ItemSection
         areas={data.areas}
         empty={

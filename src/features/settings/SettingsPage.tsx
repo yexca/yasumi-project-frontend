@@ -5,8 +5,6 @@ import { Button } from "@/components/primitives/Button";
 import { SegmentedControl } from "@/components/primitives/ChoiceControls";
 import { Select, TextInput } from "@/components/primitives/Field";
 import { ContentColumn, PageHeader, SectionHeader } from "@/components/layout/LayoutPrimitives";
-import { isValidTimeZone } from "@/domain/settings/defaults";
-import { formatDateOnly, formatLocalDateTime } from "@/domain/time/dateOnly";
 import { usePlanningData, usePlanningMutations } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { getDefaultLocale } from "@/i18n/messages";
@@ -17,32 +15,17 @@ import styles from "./SettingsPage.module.css";
 
 export function SettingsPage() {
   const { t } = useTranslation();
-  const { settings, today } = usePlanningData();
+  const { settings } = usePlanningData();
   const { updateSettings } = usePlanningMutations();
   const { background, resetBackground, setCustomBackground, setThemeMode, themeMode } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [backgroundError, setBackgroundError] = useState<string | null>(null);
-  const [timeZoneError, setTimeZoneError] = useState<string | null>(null);
 
   const themeOptions: { label: string; value: ThemeMode }[] = [
     { label: t("settings.theme.system"), value: "system" },
     { label: t("settings.theme.light"), value: "light" },
     { label: t("settings.theme.dark"), value: "dark" },
   ];
-  const localDateTimePreview = formatLocalDateTime("2026-06-14T08:30:45Z", settings.time_zone);
-
-  function commitTimeZone(value: string) {
-    const nextTimeZone = value.trim();
-
-    if (!isValidTimeZone(nextTimeZone)) {
-      setTimeZoneError(t("settings.timeZone.invalid"));
-      return;
-    }
-
-    setTimeZoneError(null);
-    updateSettings({ time_zone: nextTimeZone });
-  }
-
   function commitPositiveInteger(
     key: "deadline_awareness_days" | "today_primary_lookahead_days",
     value: string,
@@ -100,7 +83,6 @@ export function SettingsPage() {
               <option value="zh-Hans">{t("settings.language.zhHans")}</option>
               <option value="ja">{t("settings.language.ja")}</option>
             </Select>
-            <TextInput label={t("settings.locale.label")} readOnly value={settings.locale} />
             <Select
               label={t("settings.weekStart.label")}
               onChange={(event) =>
@@ -113,52 +95,20 @@ export function SettingsPage() {
               <option value="sunday">{t("settings.weekStart.sunday")}</option>
               <option value="monday">{t("settings.weekStart.monday")}</option>
             </Select>
-            <TextInput
-              error={timeZoneError ?? undefined}
-              defaultValue={settings.time_zone}
-              key={settings.time_zone}
-              label={t("settings.timeZone.label")}
-              list="yasumi-time-zone-suggestions"
-              onBlur={(event) => commitTimeZone(event.currentTarget.value)}
-            />
-            <datalist id="yasumi-time-zone-suggestions">
-              <option value="Asia/Tokyo" />
-              <option value="Asia/Shanghai" />
-              <option value="America/Los_Angeles" />
-              <option value="UTC" />
-            </datalist>
-            <TextInput
-              label={t("settings.dateFormat.label")}
-              readOnly
-              value={settings.date_display_format}
-            />
-            <TextInput
-              label={t("settings.dateOnlyPreview.label")}
-              readOnly
-              value={formatDateOnly(today)}
-            />
-            <TextInput
-              label={t("settings.localDateTimePreview.label")}
-              readOnly
-              value={localDateTimePreview}
-            />
             <Select
-              label={t("settings.timeFormat.label")}
+              label={t("settings.timeZone.label")}
               onChange={(event) =>
                 updateSettings({
-                  time_display_format: event.target.value as typeof settings.time_display_format,
+                  time_zone: event.target.value,
                 })
               }
-              value={settings.time_display_format}
+              value={settings.time_zone}
             >
-              <option value="12h">{t("settings.timeFormat.12h")}</option>
-              <option value="24h">{t("settings.timeFormat.24h")}</option>
+              <option value="Asia/Shanghai">{t("settings.timeZone.shanghai")}</option>
+              <option value="Asia/Tokyo">{t("settings.timeZone.tokyo")}</option>
+              <option value="Europe/London">{t("settings.timeZone.london")}</option>
+              <option value="America/New_York">{t("settings.timeZone.newYork")}</option>
             </Select>
-            <TextInput
-              label={t("settings.defaultTimeZoneMode.label")}
-              readOnly
-              value={t(`settings.defaultTimeZoneMode.${settings.default_time_zone_mode}`)}
-            />
             <TextInput
               label={t("settings.primaryLookahead.label")}
               min={1}

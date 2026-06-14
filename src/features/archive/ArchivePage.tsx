@@ -24,7 +24,12 @@ export function ArchivePage() {
   const handleAction: ItemActionHandler = (action, item) => setActiveFlow({ action, item });
 
   return (
-    <PageFrame description={t("page.archive.description")} title={t("nav.archive")}>
+    <PageFrame
+      areas={data.areas}
+      description={t("page.archive.description")}
+      itemsForDetail={rows}
+      title={t("nav.archive")}
+    >
       <ItemSection
         areas={data.areas}
         empty={

@@ -44,7 +44,7 @@ Implemented and verified the local data and contract-domain foundation against
 
 ## Environment Notes
 
-- Root and `env/.devcontainer` definitions forward frontend `5173`, preview/E2E `4175`, backend `7655`, and PowerSync `8081`.
+- Root and `env/.devcontainer` definitions forward frontend `5173`, preview/E2E `4175`, backend `7659`, and PowerSync `8081`.
 - Runtime remains pinned through `env/Dockerfile` and `.\env\npm.cmd`.
 
 ## Results

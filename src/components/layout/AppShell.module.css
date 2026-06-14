@@ -1,7 +1,7 @@
 .shell {
   display: grid;
   min-height: 100vh;
-  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  grid-template-columns: 252px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -149,16 +149,8 @@
   padding: 14px 24px;
 }
 
-.topBar h1 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 740;
-  letter-spacing: 0;
-  line-height: 1.2;
-}
-
 .dateContext {
-  margin: 0 0 2px;
+  margin: 0;
   color: var(--color-text-secondary);
   font-size: 13px;
 }
@@ -169,28 +161,55 @@
   gap: 10px;
 }
 
-.quickAddButton {
+.utilitySelect {
   display: inline-flex;
-  min-height: 40px;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border: 1px solid var(--color-accent-default);
-  border-radius: var(--radius-sm);
-  background: var(--color-accent-default);
-  color: #ffffff;
-  padding: 0 14px;
-  font-size: 14px;
-  font-weight: 660;
+  gap: 6px;
 }
 
-.quickAddButton:hover {
-  background: var(--color-accent-strong);
+.utilitySelect select {
+  min-width: 120px;
+  min-height: 36px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  padding: 0 8px;
+}
+
+.userButton {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-panel);
+  color: var(--color-text-primary);
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .content {
   min-width: 0;
-  padding: 22px 24px;
+  padding: 22px 24px 96px;
+}
+
+.mobileAddButton {
+  display: none;
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  z-index: 12;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-accent-default);
+  color: #ffffff;
+  box-shadow: var(--shadow-overlay);
 }
 
 @media (max-width: 760px) {
@@ -204,13 +223,17 @@
     bottom: 0;
     left: 0;
     z-index: 10;
+    display: grid;
     min-height: 0;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
     border-top: 1px solid var(--color-border-default);
     border-right: 0;
     padding: 7px;
   }
 
   .brand,
+  .navQuickAdd,
   .syncStatus {
     display: none;
   }
@@ -284,4 +307,25 @@
   .content {
     padding: 18px 14px 82px;
   }
+
+  .mobileAddButton {
+    display: inline-flex;
+  }
+}
+.navQuickAdd {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--color-accent-default);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-default);
+  color: #ffffff;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.navQuickAdd:hover {
+  background: var(--color-accent-strong);
 }

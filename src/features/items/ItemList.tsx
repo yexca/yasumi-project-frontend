@@ -1,7 +1,8 @@
-import { useMemo, type ReactNode } from "react";
+import { X } from "lucide-react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 import { DenseItemRow, type DenseItemRowState } from "@/components/items/DenseItemRow";
-import { Button } from "@/components/primitives/Button";
+import { Button, IconButton } from "@/components/primitives/Button";
 import { ContentColumn, PageHeader, SectionHeader } from "@/components/layout/LayoutPrimitives";
 import type { TodayReasonKey } from "@/domain/constants/shared";
 import type { AreaDto, LocalItemRow } from "@/domain/items/schemas";
@@ -12,8 +13,6 @@ import { ItemOverflowActions } from "./ItemActions";
 import {
   getDeadlineLabel,
   getItemDateLabel,
-  getPrimaryAction,
-  getPrimaryActionIcon,
   getStateKey,
   getTypeMarker,
   reasonKeyToMessageKey,
@@ -22,6 +21,14 @@ import {
 import styles from "./ItemList.module.css";
 
 export type ItemActionHandler = (action: ItemAction, item: LocalItemRow) => void;
+
+type ItemListSelectionContextValue = {
+  areas: AreaDto[];
+  selectedItem: LocalItemRow | null;
+  selectItem: (item: LocalItemRow) => void;
+};
+
+const ItemListSelectionContext = createContext<ItemListSelectionContextValue | null>(null);
 
 type EmptyStateProps = {
   actionLabel?: string;
@@ -46,17 +53,42 @@ export function EmptyState({ actionLabel, description, onAction, title }: EmptyS
 
 type PageFrameProps = {
   actions?: ReactNode;
+  areas?: AreaDto[];
   children: ReactNode;
   description?: string;
+  itemsForDetail?: LocalItemRow[];
   title: string;
 };
 
-export function PageFrame({ actions, children, description, title }: PageFrameProps) {
+export function PageFrame({
+  actions,
+  areas = [],
+  children,
+  description,
+  itemsForDetail = [],
+  title,
+}: PageFrameProps) {
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const selectedItem = itemsForDetail.find((item) => item.id === selectedItemId) ?? null;
+
   return (
-    <ContentColumn>
-      <PageHeader actions={actions} description={description} title={title} />
-      {children}
-    </ContentColumn>
+    <ItemListSelectionContext.Provider
+      value={{ areas, selectedItem, selectItem: (item) => setSelectedItemId(item.id) }}
+    >
+      <div className={styles.pageGrid}>
+        <ContentColumn>
+          <PageHeader actions={actions} description={description} title={title} />
+          {children}
+        </ContentColumn>
+        {selectedItem ? (
+          <ItemDetailPane
+            areas={areas}
+            item={selectedItem}
+            onClose={() => setSelectedItemId(null)}
+          />
+        ) : null}
+      </div>
+    </ItemListSelectionContext.Provider>
   );
 }
 
@@ -84,7 +116,7 @@ export function ItemSection({
   }
 
   return (
-    <section className={styles.section}>
+    <section className={styles.section} data-item-section>
       <SectionHeader count={items.length} title={title} />
       <div className={styles.list}>
         {items.map((item) => (
@@ -112,41 +144,144 @@ type PlanningItemRowProps = {
 
 export function PlanningItemRow({ areas, item, onAction, reasons, state }: PlanningItemRowProps) {
   const { t } = useTranslation();
-  const { getItemSyncState } = usePlanningMutations();
+  const selection = useContext(ItemListSelectionContext);
+  const { getItemSyncState, restoreItemSnapshot, runItemAction } = usePlanningMutations();
+  const [undoItem, setUndoItem] = useState<LocalItemRow | null>(null);
   const areaName = useMemo(
     () => areas.find((area) => area.id === item.area_id)?.name,
     [areas, item.area_id],
   );
-  const primary = getPrimaryAction(item);
-  const primaryLabel = t(primary.labelKey);
   const stateKey = getStateKey(item.status);
   const syncState = getItemSyncState(item.id);
   const rowState = syncState ?? state ?? itemStatusToRowState(item);
   const date = buildDateMetadata(item, t);
+  const canComplete =
+    item.status !== "abandoned" &&
+    item.deleted_at === null &&
+    item.archived_at === null &&
+    item.item_type !== "inbox" &&
+    item.hidden_reason === null;
+
+  function toggleCompletion() {
+    if (!canComplete) {
+      return;
+    }
+
+    if (item.status === "completed") {
+      runItemAction(item.id, "reopen");
+      return;
+    }
+
+    const previous = item;
+    const result = runItemAction(item.id, "complete");
+
+    if (result.ok) {
+      setUndoItem(previous);
+    }
+  }
 
   return (
-    <DenseItemRow
-      actions={<ItemOverflowActions item={item} onAction={onAction} />}
-      area={areaName}
-      date={date}
-      leading={getTypeMarker(item.item_type)}
-      moreActionLabel={t("item.action.more")}
-      onPrimaryAction={() => onAction(primary, item)}
-      primaryActionLabel={primaryLabel}
-      primaryIcon={getPrimaryActionIcon(primary.id)}
-      reasons={reasons?.map((reason) => t(reasonKeyToMessageKey(reason)))}
-      state={rowState}
-      stateLabel={
-        syncState === "pending"
-          ? t("sync.itemPending")
-          : syncState === "rejected"
-            ? t("sync.itemRejected")
-            : stateKey
-              ? t(stateKey)
-              : undefined
-      }
-      title={item.title}
-    />
+    <>
+      <DenseItemRow
+        actions={<ItemOverflowActions item={item} onAction={onAction} />}
+        area={areaName}
+        date={date}
+        isSelected={selection?.selectedItem?.id === item.id}
+        leading={getTypeMarker(item.item_type)}
+        moreActionLabel={t("item.action.more")}
+        onComplete={toggleCompletion}
+        onSelect={() => selection?.selectItem(item)}
+        completeActionLabel={t(
+          item.status === "completed" ? "item.action.reopen" : "item.action.complete",
+        )}
+        completeDisabled={!canComplete}
+        reasons={reasons?.map((reason) => t(reasonKeyToMessageKey(reason)))}
+        state={rowState}
+        stateLabel={
+          syncState === "pending"
+            ? t("sync.itemPending")
+            : syncState === "rejected"
+              ? t("sync.itemRejected")
+              : stateKey
+                ? t(stateKey)
+                : undefined
+        }
+        title={item.title}
+      />
+      {undoItem ? (
+        <div className={styles.toast} role="status">
+          <span>{t("item.completionToast.completed")}</span>
+          <Button
+            onClick={() => {
+              restoreItemSnapshot(undoItem);
+              setUndoItem(null);
+            }}
+            variant="quiet"
+          >
+            {t("item.completionToast.undo")}
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function ItemDetailPane({
+  areas,
+  item,
+  onClose,
+}: {
+  areas: AreaDto[];
+  item: LocalItemRow;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const { getItemSyncState } = usePlanningMutations();
+  const areaName = areas.find((area) => area.id === item.area_id)?.name ?? t("area.picker.none");
+  const syncState = getItemSyncState(item.id);
+
+  return (
+    <aside className={styles.detailPane} aria-label={t("item.detail.title")}>
+      <div className={styles.detailHeader}>
+        <div>
+          <p className={styles.detailEyebrow}>{t(itemTypeToMessageKey(item.item_type))}</p>
+          <h3>{item.title}</h3>
+        </div>
+        <IconButton
+          aria-label={t("common.close")}
+          icon={<X aria-hidden="true" size={17} />}
+          onClick={onClose}
+          tooltip={t("common.close")}
+        />
+      </div>
+      {item.note ? <p className={styles.detailNote}>{item.note}</p> : null}
+      <dl className={styles.detailList}>
+        <DetailRow label={t("item.field.status")} value={t(`item.state.${item.status}`)} />
+        <DetailRow label={t("area.picker.label")} value={areaName} />
+        <DetailRow label={t("item.field.scheduledDate")} value={item.scheduled_date ?? "-"} />
+        <DetailRow label={t("item.field.deadlineDate")} value={item.deadline_date ?? "-"} />
+        <DetailRow label={t("item.field.reviewDate")} value={item.review_date ?? "-"} />
+        <DetailRow
+          label={t("item.detail.syncState")}
+          value={
+            syncState === "pending"
+              ? t("sync.itemPending")
+              : syncState === "rejected"
+                ? t("sync.itemRejected")
+                : t("sync.synced")
+          }
+        />
+      </dl>
+    </aside>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
   );
 }
 
@@ -183,4 +318,17 @@ function buildDateMetadata(item: LocalItemRow, t: (key: string) => string): stri
   }
 
   return date ?? undefined;
+}
+
+function itemTypeToMessageKey(itemType: string) {
+  switch (itemType) {
+    case "date_task":
+      return "item.type.dateTask";
+    case "deadline_task":
+      return "item.type.deadlineTask";
+    case "idea":
+      return "item.type.idea";
+    default:
+      return "item.type.inbox";
+  }
 }

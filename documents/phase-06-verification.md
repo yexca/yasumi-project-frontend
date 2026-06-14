@@ -4,6 +4,8 @@ Date: 2026-06-14
 
 Rechecked: 2026-06-14 06:34 JST
 
+First manual acceptance revision: 2026-06-14 JST
+
 ## Scope
 
 Implemented and verified the i18n, settings, timezone display, and local visual preference phase
@@ -72,3 +74,22 @@ against `../dev_documents/frontend_coding_guide/07-phase-06-i18n-settings-and-ba
 Localization, settings editing, timezone display, and local visual preference behavior are complete
 enough for Phase 07 hardening. Full authenticated settings sync convergence and backend-driven
 account/session flows remain later integration work.
+
+## First Manual Acceptance Revision
+
+- Added authentication gate with login and registration before the normal app shell.
+- Preserved local app access when an existing local session is available offline, with sync status showing offline or blocked state.
+- Removed page titles from the global header; page names remain in the main page content.
+- Moved desktop Quick Add to the far-left navigation area and added a mobile bottom add button.
+- Added Today-page Quick Add defaults so low-confidence captures become date tasks scheduled for today.
+- Changed item rows to use a left-side completion/reopen control, right-side item source/type icon, row selection, and undo completion toast.
+- Added a desktop right-side item detail pane that follows row selection and can be closed.
+- Simplified Settings by hiding fixed/derived display fields and replacing free-form timezone entry with Shanghai, Tokyo, London, and New York choices.
+
+Verification rerun:
+
+```powershell
+.\env\npm.cmd run typecheck
+.\env\npm.cmd test -- --run
+.\env\npm.cmd run lint
+```

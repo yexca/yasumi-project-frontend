@@ -115,6 +115,8 @@ export type PostponeInput = {
 };
 
 export type QuickAddInput = {
+  defaultItemType?: "date_task";
+  defaultScheduledDate?: DateOnly;
   mode: "inbox" | "suggestion";
   sourceText: string;
 };
@@ -132,6 +134,7 @@ export type PlanningMutations = {
   getItemSyncState: (itemId: string) => "pending" | "rejected" | null;
   getRejectedContextForRow: (rowId: string) => RejectedWriteContext | null;
   postponeItem: (itemId: string, input: PostponeInput) => MutationResult;
+  restoreItemSnapshot: (item: LocalItemRow) => MutationResult;
   runItemAction: (itemId: string, action: ItemActionId) => MutationResult;
   updateSettings: (input: UserSettingsInput) => MutationResult;
 };
@@ -154,6 +157,7 @@ type PlanningAction =
   | { type: "deleteArea"; areaId: string; choice: AreaDeleteChoice; now: string }
   | { type: "editItem"; itemId: string; input: ItemEditorInput; now: string }
   | { type: "postponeItem"; itemId: string; input: PostponeInput; now: string }
+  | { type: "restoreItemSnapshot"; item: LocalItemRow; now: string }
   | { type: "runItemAction"; itemId: string; action: ItemActionId; now: string }
   | { type: "updateSettings"; input: UserSettingsInput; now: string };
 
@@ -466,6 +470,9 @@ export function PlanningDataProvider({ children }: PropsWithChildren) {
       postponeItem(itemId, input) {
         return commit({ type: "postponeItem", itemId, input, now: new Date().toISOString() });
       },
+      restoreItemSnapshot(item) {
+        return commit({ type: "restoreItemSnapshot", item, now: new Date().toISOString() });
+      },
       runItemAction(itemId, action) {
         return commit({ type: "runItemAction", itemId, action, now: new Date().toISOString() });
       },
@@ -624,6 +631,10 @@ function reducePlanningState(
     return postponeItem(state, action.itemId, action.input, action.now);
   }
 
+  if (action.type === "restoreItemSnapshot") {
+    return restoreItemSnapshot(state, action.item, action.now);
+  }
+
   if (action.type === "deleteArea") {
     return deleteArea(state, action.areaId, action.choice, action.now);
   }
@@ -633,6 +644,33 @@ function reducePlanningState(
   }
 
   return runItemAction(state, action.itemId, action.action, action.now);
+}
+
+function restoreItemSnapshot(
+  state: PlanningState,
+  item: LocalItemRow,
+  now: string,
+): { state: PlanningState; result: MutationResult } {
+  if (!state.items.some((candidate) => candidate.id === item.id)) {
+    return { state, result: { ok: false, error: validationError({ title: "item_not_found" }) } };
+  }
+
+  const mutation = buildMutation(state, item.id, "items", "reopen");
+  const restored = {
+    ...item,
+    client_updated_at: now,
+    updated_at: now,
+    updated_by_device_id: state.deviceId,
+  };
+
+  return {
+    state: {
+      ...state,
+      items: state.items.map((candidate) => (candidate.id === item.id ? restored : candidate)),
+      pendingMutations: [...state.pendingMutations, mutation],
+    },
+    result: { ok: true, mutation },
+  };
 }
 
 function updateSettings(
@@ -693,6 +731,10 @@ function createCapture(
     today: state.today,
   });
   const itemType = input.mode === "inbox" ? "inbox" : preview.itemTypeSuggestion;
+  const effectiveItemType =
+    input.mode === "suggestion" && preview.confidence === "low" && input.defaultItemType
+      ? input.defaultItemType
+      : itemType;
   const captureTitle = input.sourceText.trim().replace(/\s+/g, " ") || "Untitled capture";
   const row = normalizeItemRow({
     id: createId("item"),
@@ -707,21 +749,26 @@ function createCapture(
     created_by_device_id: state.deviceId,
     updated_by_device_id: state.deviceId,
     revision: 0,
-    item_type: itemType,
+    item_type: effectiveItemType,
     title: input.mode === "inbox" ? captureTitle : preview.cleanTitle,
     note: null,
     status: "active",
     area_id: null,
-    scheduled_date: itemType === "date_task" ? (preview.fields.scheduled_date ?? null) : null,
-    scheduled_time_zone_mode: itemType === "date_task" ? "floating" : null,
-    deadline_date: itemType === "deadline_task" ? (preview.fields.deadline_date ?? null) : null,
-    deadline_time: itemType === "deadline_task" ? (preview.fields.deadline_time ?? null) : null,
+    scheduled_date:
+      effectiveItemType === "date_task"
+        ? (preview.fields.scheduled_date ?? input.defaultScheduledDate ?? null)
+        : null,
+    scheduled_time_zone_mode: effectiveItemType === "date_task" ? "floating" : null,
+    deadline_date:
+      effectiveItemType === "deadline_task" ? (preview.fields.deadline_date ?? null) : null,
+    deadline_time:
+      effectiveItemType === "deadline_task" ? (preview.fields.deadline_time ?? null) : null,
     deadline_time_zone_mode:
-      itemType === "deadline_task"
+      effectiveItemType === "deadline_task"
         ? ((preview.fields.deadline_time_zone_mode as "date_only" | "floating" | null) ??
           "date_only")
         : null,
-    review_date: itemType === "idea" ? (preview.fields.review_date ?? null) : null,
+    review_date: effectiveItemType === "idea" ? (preview.fields.review_date ?? null) : null,
     quick_add_source_text: input.sourceText,
     quick_add_parse_result: {
       confidence: preview.confidence,
@@ -1114,10 +1161,17 @@ function getInitialUserSettings(): UserSettingsDefaults {
   const browserLanguage =
     typeof navigator !== "undefined" ? (navigator.languages?.[0] ?? navigator.language) : "en";
 
-  return buildDefaultUserSettings(
-    detectSupportedLanguage(browserLanguage),
-    getDefaultDeviceTimeZone(),
-  );
+  const deviceTimeZone = getDefaultDeviceTimeZone();
+  const supportedTimeZone = [
+    "Asia/Shanghai",
+    "Asia/Tokyo",
+    "Europe/London",
+    "America/New_York",
+  ].includes(deviceTimeZone)
+    ? deviceTimeZone
+    : "Asia/Tokyo";
+
+  return buildDefaultUserSettings(detectSupportedLanguage(browserLanguage), supportedTimeZone);
 }
 
 function readStoredUserSettings(): UserSettingsDefaults | null {
