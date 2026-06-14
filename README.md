@@ -11,6 +11,23 @@ Use the reproducible environment under `env/`.
 .\env\npm.cmd run dev
 ```
 
+The local dev server now defaults to `http://127.0.0.1:7650`.
+
+## Docker Compose
+
+With the backend repository present at the sibling path `..\yasumi-project-backend`, you can start the release-style full stack directly from this frontend directory:
+
+```powershell
+Copy-Item .env.example .env
+docker compose up -d --build
+```
+
+Default exposed endpoints:
+
+- Frontend: `http://127.0.0.1:7650`
+
+The frontend proxies backend API and PowerSync traffic through the same origin, so the host only needs port `7650`.
+
 ## Checks
 
 ```powershell
