@@ -24,15 +24,15 @@ Use the checked-in Node runtime instead of a machine-level Node install:
 Build and run the production-style static frontend:
 
 ```bash
-docker build -f env/Dockerfile -t yasumi-frontend .
-docker run --rm -it -p 7650:7650 yasumi-frontend
+docker build -f env/Dockerfile -t yexca/yasumi-project-frontend:0.1.0 .
+docker run --rm -it -p 7650:7650 yexca/yasumi-project-frontend:0.1.0
 ```
 
 Build and run the development server from the same Dockerfile:
 
 ```bash
-docker build -f env/Dockerfile --target dev -t yasumi-frontend-dev .
-docker run --rm -it -p 7650:7650 yasumi-frontend-dev
+docker build -f env/Dockerfile --target dev -t yexca/yasumi-project-frontend:0.1.0-dev .
+docker run --rm -it -p 7650:7650 yexca/yasumi-project-frontend:0.1.0-dev
 ```
 
 For full-stack release validation from this frontend directory, copy `.env.example` to `.env` if you need overrides, then run:
@@ -42,6 +42,8 @@ docker compose up -d --build
 ```
 
 This Compose file builds the backend from `../yasumi-project-backend` and exposes the app on `http://127.0.0.1:7650`. API and PowerSync traffic are forwarded through the frontend container, so you only need the single frontend port on the host.
+
+By default, the Compose frontend image name is `yexca/yasumi-project-frontend:0.1.0`, configurable through `.env`.
 
 ## Service Ports
 

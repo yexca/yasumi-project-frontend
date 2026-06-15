@@ -1,5 +1,8 @@
 name: yasumi
 
+x-yasumi-frontend-image: &yasumi-frontend-image
+  image: ${YASUMI_FRONTEND_IMAGE_REPOSITORY:-yexca/yasumi-project-frontend}:${YASUMI_FRONTEND_IMAGE_TAG:-0.1.0}
+
 x-yasumi-environment: &yasumi-environment
   YASUMI_APP_ENV: ${YASUMI_APP_ENV:-local}
   YASUMI_HTTP_HOST: 0.0.0.0
@@ -71,6 +74,7 @@ services:
       retries: 5
 
   frontend:
+    <<: *yasumi-frontend-image
     build:
       context: .
       dockerfile: env/Dockerfile
