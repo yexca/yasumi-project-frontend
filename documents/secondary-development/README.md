@@ -115,5 +115,6 @@ Examples:
 
 ## 9. Recommended Document Pairing
 
-- Read `../architecture-optimization/README.md` before splitting large files.
-- Read `../original-development/README.md` when historical acceptance scope matters.
+- Read `../development-rounds/round-2-real-sync/README.md` before doing current real-sync work.
+- Read `../development-rounds/round-2-real-sync/04-structure-guidance.md` before splitting large files during Round 2.
+- Read `../development-rounds/round-1-original-development/README.md` when historical acceptance scope matters.

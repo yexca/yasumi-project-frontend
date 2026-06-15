@@ -31,4 +31,4 @@ Across the archived records, the project evolved from a strict Vite + React + Ty
 - direct API and PowerSync integration boundaries
 - automated test coverage, E2E checks, and release guardrails
 
-For present-day continuation work, start with `../secondary-development/README.md`.
+For present-day continuation work, start with `../../secondary-development/README.md`.

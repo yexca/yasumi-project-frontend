@@ -1,20 +1,22 @@
 # Yasumi Frontend Documentation
 
-`documents/` has been reorganized into three independent areas so later handoff and iteration stay clear:
+`documents/` is organized around stable secondary-development guidance and round-specific delivery records.
 
-- `original-development/`: raw development-period records, acceptance notes, release checklist, and performance verification.
-- `secondary-development/`: onboarding and extension notes for continued development on the current frontend.
-- `architecture-optimization/`: structure review and lightweight optimization guidance aimed at higher cohesion and lower coupling.
+## Directory Map
+
+- `secondary-development/`: current frontend architecture, extension rules, and lightweight development conventions.
+- `development-rounds/round-1-original-development/`: archived first-round implementation records.
+- `development-rounds/round-2-real-sync/`: active second-round guidance for real sync, data-source migration, write mapping, verification, and focused structure cleanup.
 
 ## Suggested Reading Order
 
-1. Read `secondary-development/README.md` for current architecture, boundaries, and extension conventions.
-2. Read `architecture-optimization/README.md` before larger refactors or module extraction work.
-3. Use `original-development/README.md` when you need historical phase context, acceptance evidence, or release constraints.
+1. Read `secondary-development/README.md` for the current project shape and dependency boundaries.
+2. Read `development-rounds/round-2-real-sync/README.md` before doing second-round work.
+3. Use `development-rounds/round-1-original-development/` only when historical context or first-round acceptance evidence is needed.
 
 ## Maintenance Rules
 
-- Keep historical records in `original-development/` and avoid rewriting them as living docs.
-- Keep current-state handoff docs in `secondary-development/`.
-- Keep future-oriented refactor proposals in `architecture-optimization/`.
-- When adding a new document, prefer updating the closest subfolder index so the tree remains self-explanatory.
+- Keep durable architecture conventions in `secondary-development/`.
+- Keep delivery-specific instructions inside the matching `development-rounds/round-*` folder.
+- Do not make a round document depend on another round for active instructions; copy and update still-relevant guidance into the current round.
+- When adding a new document, update the closest folder index so the tree remains self-explanatory.
