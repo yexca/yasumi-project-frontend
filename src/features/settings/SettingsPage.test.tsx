@@ -100,4 +100,17 @@ describe("SettingsPage", () => {
     expect(screen.getByLabelText("New password")).toBeInTheDocument();
     expect(screen.getByLabelText("Weather city")).toHaveValue("Tokyo");
   });
+
+  it("allows customizing mobile bottom bar shortcuts", async () => {
+    const user = userEvent.setup();
+
+    renderSettings();
+
+    const firstShortcut = screen.getByLabelText("Shortcut 1");
+    await user.selectOptions(firstShortcut, " /deadlines".trim());
+
+    expect(firstShortcut).toHaveValue("/deadlines");
+    expect(screen.getByLabelText("Shortcut 2")).toHaveValue("/inbox");
+    expect(screen.getByLabelText("Shortcut 3")).toHaveValue("/upcoming");
+  });
 });

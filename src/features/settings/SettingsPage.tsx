@@ -1,6 +1,10 @@
 import { Image, KeyRound, RotateCcw, Save } from "lucide-react";
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
+import {
+  getMobileNavSlotOptions,
+  useMobileNavSlots,
+} from "@/app/navigation/mobileNavigation";
 import { Button } from "@/components/primitives/Button";
 import { SegmentedControl } from "@/components/primitives/ChoiceControls";
 import { Select, TextInput } from "@/components/primitives/Field";
@@ -25,6 +29,7 @@ export function SettingsPage() {
   const [backgroundError, setBackgroundError] = useState<string | null>(null);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
+  const { resetSlots, slots, updateSlot } = useMobileNavSlots();
 
   const themeOptions: { label: string; value: ThemeMode }[] = [
     { label: t("settings.theme.system"), value: "system" },
@@ -223,6 +228,32 @@ export function SettingsPage() {
                   ref={fileInputRef}
                   type="file"
                 />
+              </div>
+            </article>
+
+            <article className={["surface-row", styles.settingRow, styles.mobileNavRow].join(" ")}>
+              <div className={styles.settingCopy}>
+                <span className={styles.settingLabel}>{t("settings.mobileNav.label")}</span>
+                <p className={styles.settingDescription}>{t("settings.mobileNav.description")}</p>
+              </div>
+              <div className={styles.mobileNavControls}>
+                {slots.map((slot, index) => (
+                  <Select
+                    key={`${slot}-${index}`}
+                    label={t("settings.mobileNav.slot", { index: index + 1 })}
+                    onChange={(event) => updateSlot(index, event.target.value as typeof slot)}
+                    value={slot}
+                  >
+                    {getMobileNavSlotOptions(index, slots).map((option) => (
+                      <option key={option.path} value={option.path}>
+                        {t(option.labelKey)}
+                      </option>
+                    ))}
+                  </Select>
+                ))}
+                <Button onClick={resetSlots} variant="quiet">
+                  {t("settings.mobileNav.reset")}
+                </Button>
               </div>
             </article>
           </div>

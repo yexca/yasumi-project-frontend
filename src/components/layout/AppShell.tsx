@@ -1,6 +1,7 @@
 import {
   ChevronDown,
   CloudSun,
+  Ellipsis,
   Languages,
   LogOut,
   Moon,
@@ -10,11 +11,13 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { NavLink, useLocation } from "react-router";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router";
 
+import { useMobileNavSlots } from "@/app/navigation/mobileNavigation";
 import { NAV_ITEMS, ROUTE_PATHS } from "@/app/router/routes";
 import { IconButton } from "@/components/primitives/Button";
+import { Menu, MenuItem } from "@/components/primitives/Menu";
 import { getDateOnlyInTimeZone } from "@/domain/time/dateOnly";
 import { useAuth } from "@/features/auth/AuthProvider";
 import {
@@ -38,6 +41,7 @@ const QuickAddDialog = lazy(() =>
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { logout, session, status } = useAuth();
   const { areas, settings, today } = usePlanningData();
@@ -46,10 +50,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { resolvedMode, setThemeMode, themeMode } = useTheme();
   const syncState = useSyncUiState();
   const lastSyncAttemptKey = useRef("");
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [areasOpen, setAreasOpen] = useState(true);
   const [now, setNow] = useState(() => new Date());
   const [weather, setWeather] = useState<WeatherResponseDto | null>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const { mobileNavItems, moreNavItems } = useMobileNavSlots();
   const effectiveWeather = session?.accessToken && status !== "offline" ? weather : null;
   const effectiveSyncMode = status === "blocked" ? "blocked" : syncState.mode;
   const effectiveSyncLabel =
@@ -58,13 +63,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       : status === "offline"
         ? t("sync.offline")
         : t(syncState.labelKey);
-  const quickAddDefault = useMemo(
-    () =>
-      pathname === ROUTE_PATHS.today
-        ? { defaultItemType: "date_task" as const, defaultScheduledDate: today }
-        : undefined,
-    [pathname, today],
-  );
+  const isTodayRoute = pathname === ROUTE_PATHS.today;
 
   useEffect(() => {
     function openQuickAdd() {
@@ -272,18 +271,66 @@ export function AppShell({ children }: { children: ReactNode }) {
           {children}
         </main>
       </div>
-      <button
-        aria-label={t("quickAdd.button")}
-        className={styles.mobileAddButton}
-        onClick={() => setQuickAddOpen(true)}
-        type="button"
-      >
-        <Plus aria-hidden="true" size={22} />
-      </button>
+
+      <nav className={styles.mobileNav} aria-label={t("shell.mobileNavigation")}>
+        {mobileNavItems.map((item) => (
+          <NavLink
+            className={({ isActive }) =>
+              item.path === ROUTE_PATHS.areas
+                ? pathname.startsWith("/areas")
+                  ? `${styles.mobileNavLink} ${styles.activeMobileNavLink}`
+                  : styles.mobileNavLink
+                : isActive
+                  ? `${styles.mobileNavLink} ${styles.activeMobileNavLink}`
+                  : styles.mobileNavLink
+            }
+            key={item.path}
+            to={item.path}
+          >
+            <item.icon aria-hidden="true" size={18} strokeWidth={2} />
+            <span>{t(item.labelKey)}</span>
+          </NavLink>
+        ))}
+        <Menu
+          trigger={
+            <button className={styles.mobileNavLink} type="button">
+              <Ellipsis aria-hidden="true" size={18} strokeWidth={2} />
+              <span>{t("nav.more")}</span>
+            </button>
+          }
+        >
+          {moreNavItems.map((item) => (
+            <MenuItem
+              key={item.path}
+              onSelect={() => {
+                void navigate(item.path);
+              }}
+            >
+              <span
+                className={
+                  item.path === ROUTE_PATHS.areas
+                    ? pathname.startsWith("/areas")
+                      ? styles.mobileMoreLinkActive
+                      : styles.mobileMoreLink
+                    : pathname === item.path
+                      ? styles.mobileMoreLinkActive
+                      : styles.mobileMoreLink
+                }
+              >
+                <item.icon aria-hidden="true" size={16} />
+                <span>{t(item.labelKey)}</span>
+              </span>
+            </MenuItem>
+          ))}
+        </Menu>
+      </nav>
+
       {quickAddOpen ? (
         <Suspense fallback={null}>
           <QuickAddDialog
-            defaultCapture={quickAddDefault}
+            defaultCapture={
+              isTodayRoute ? { defaultItemType: "date_task", defaultScheduledDate: today } : undefined
+            }
             onOpenChange={setQuickAddOpen}
             open={quickAddOpen}
           />

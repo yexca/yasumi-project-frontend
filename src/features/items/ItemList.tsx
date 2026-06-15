@@ -12,6 +12,7 @@ import {
 
 import { DenseItemRow, type DenseItemRowState } from "@/components/items/DenseItemRow";
 import { Button, IconButton } from "@/components/primitives/Button";
+import { Dialog } from "@/components/primitives/Dialog";
 import { ContentColumn, PageHeader, SectionHeader } from "@/components/layout/LayoutPrimitives";
 import type { TodayReasonKey } from "@/domain/constants/shared";
 import type { AreaDto, LocalItemRow } from "@/domain/items/schemas";
@@ -80,9 +81,22 @@ export function PageFrame({
 }: PageFrameProps) {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [undoItem, setUndoItem] = useState<LocalItemRow | null>(null);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth <= 760 : false,
+  );
   const { restoreItemSnapshot } = usePlanningMutations();
   const { t } = useTranslation();
   const selectedItem = itemsForDetail.find((item) => item.id === selectedItemId) ?? null;
+
+  useEffect(() => {
+    function syncViewport() {
+      setIsMobile(window.innerWidth <= 760);
+    }
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    return () => window.removeEventListener("resize", syncViewport);
+  }, []);
 
   return (
     <ItemListSelectionContext.Provider
@@ -98,7 +112,7 @@ export function PageFrame({
           <PageHeader actions={actions} description={description} title={title} />
           {children}
         </ContentColumn>
-        {selectedItem ? (
+        {selectedItem && !isMobile ? (
           <ItemDetailPane
             areas={areas}
             item={selectedItem}
@@ -107,6 +121,13 @@ export function PageFrame({
           />
         ) : null}
       </div>
+      {selectedItem && isMobile ? (
+        <MobileItemDetailSheet
+          areas={areas}
+          item={selectedItem}
+          onClose={() => setSelectedItemId(null)}
+        />
+      ) : null}
       {undoItem ? (
         <div className={styles.toast} role="status">
           <span>{t("item.completionToast.completed")}</span>
@@ -254,10 +275,110 @@ function ItemDetailPane({
   const { editItem, getItemSyncState } = usePlanningMutations();
   const [note, setNote] = useState(item.note ?? "");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
-  const lastSavedNote = useRef(item.note ?? "");
-  const savedTimer = useRef<number | null>(null);
   const areaName = areas.find((area) => area.id === item.area_id)?.name ?? t("area.picker.none");
   const syncState = getItemSyncState(item.id);
+  const content = useItemDetailContent({
+    areaName,
+    editItem,
+    item,
+    note,
+    saveState,
+    setNote,
+    setSaveState,
+    syncState,
+  });
+
+  return (
+    <aside className={styles.detailPane} aria-label={t("item.detail.title")}>
+      <div className={styles.detailHeader}>
+        <p className={styles.detailEyebrow}>{t(itemTypeToMessageKey(item.item_type))}</p>
+        <IconButton
+          aria-label={t("common.close")}
+          icon={<X aria-hidden="true" size={17} />}
+          onClick={onClose}
+          tooltip={t("common.close")}
+        />
+      </div>
+      {content.body}
+    </aside>
+  );
+}
+
+function MobileItemDetailSheet({
+  areas,
+  item,
+  onClose,
+}: {
+  areas: AreaDto[];
+  item: LocalItemRow;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const { editItem, getItemSyncState } = usePlanningMutations();
+  const [note, setNote] = useState(item.note ?? "");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const areaName = areas.find((area) => area.id === item.area_id)?.name ?? t("area.picker.none");
+  const syncState = getItemSyncState(item.id);
+  const content = useItemDetailContent({
+    areaName,
+    editItem,
+    item,
+    note,
+    saveState,
+    setNote,
+    setSaveState,
+    syncState,
+  });
+
+  return (
+    <Dialog
+      className={styles.mobileDetailDialog}
+      description={t("item.detail.description")}
+      hideHeader
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+      open
+      title={item.title}
+    >
+      <div className={styles.mobileDetailHeader}>
+        <p className={styles.detailEyebrow}>{t(itemTypeToMessageKey(item.item_type))}</p>
+        <IconButton
+          aria-label={t("common.close")}
+          icon={<X aria-hidden="true" size={17} />}
+          onClick={onClose}
+          tooltip={t("common.close")}
+        />
+      </div>
+      {content.body}
+    </Dialog>
+  );
+}
+
+function useItemDetailContent({
+  areaName,
+  editItem,
+  item,
+  note,
+  saveState,
+  setNote,
+  setSaveState,
+  syncState,
+}: {
+  areaName: string;
+  editItem: ReturnType<typeof usePlanningMutations>["editItem"];
+  item: LocalItemRow;
+  note: string;
+  saveState: "idle" | "saving" | "saved";
+  setNote: (value: string) => void;
+  setSaveState: (value: "idle" | "saving" | "saved") => void;
+  syncState: "pending" | "rejected" | null;
+}) {
+  const { t } = useTranslation();
+  const lastSavedNote = useRef(item.note ?? "");
+  const savedTimer = useRef<number | null>(null);
 
   const persistNote = useCallback(
     (nextValue = note) => {
@@ -281,7 +402,7 @@ function ItemDetailPane({
       lastSavedNote.current = normalized;
       savedTimer.current = window.setTimeout(() => setSaveState("saved"), 240);
     },
-    [editItem, item.area_id, item.id, item.title, note],
+    [editItem, item.area_id, item.id, item.title, note, setSaveState],
   );
 
   useEffect(() => {
@@ -302,54 +423,48 @@ function ItemDetailPane({
     [],
   );
 
-  return (
-    <aside className={styles.detailPane} aria-label={t("item.detail.title")}>
-      <div className={styles.detailHeader}>
-        <p className={styles.detailEyebrow}>{t(itemTypeToMessageKey(item.item_type))}</p>
-        <IconButton
-          aria-label={t("common.close")}
-          icon={<X aria-hidden="true" size={17} />}
-          onClick={onClose}
-          tooltip={t("common.close")}
-        />
-      </div>
-      <div className={styles.markdownBody}>{renderMarkdown(`# ${item.title}`)}</div>
-      <label className={styles.noteEditor}>
-        <span>{t("item.field.note")}</span>
-        <textarea
-          onBlur={() => persistNote()}
-          onChange={(event) => {
-            setNote(event.target.value);
-            setSaveState("idle");
-          }}
-          placeholder={t("item.detail.notePlaceholder")}
-          rows={5}
-          value={note}
-        />
-      </label>
-      <div className={styles.noteFeedback} data-save-state={saveState}>
-        <span />
-      </div>
-      {saveState === "saved" ? <p className={styles.noteState}>{t("item.detail.saved")}</p> : null}
-      <dl className={styles.detailList}>
-        <DetailRow label={t("item.field.status")} value={t(`item.state.${item.status}`)} />
-        <DetailRow label={t("area.picker.label")} value={areaName} />
-        <DetailRow label={t("item.field.scheduledDate")} value={item.scheduled_date ?? "-"} />
-        <DetailRow label={t("item.field.deadlineDate")} value={item.deadline_date ?? "-"} />
-        <DetailRow label={t("item.field.reviewDate")} value={item.review_date ?? "-"} />
-        <DetailRow
-          label={t("item.detail.syncState")}
-          value={
-            syncState === "pending"
-              ? t("sync.itemPending")
-              : syncState === "rejected"
-                ? t("sync.itemRejected")
-                : t("sync.synced")
-          }
-        />
-      </dl>
-    </aside>
-  );
+  return {
+    body: (
+      <>
+        <div className={styles.markdownBody}>{renderMarkdown(`# ${item.title}`)}</div>
+        <label className={styles.noteEditor}>
+          <span>{t("item.field.note")}</span>
+          <textarea
+            onBlur={() => persistNote()}
+            onChange={(event) => {
+              setNote(event.target.value);
+              setSaveState("idle");
+            }}
+            placeholder={t("item.detail.notePlaceholder")}
+            rows={5}
+            value={note}
+          />
+        </label>
+        <div className={styles.noteFeedback} data-save-state={saveState}>
+          <span />
+        </div>
+        {saveState === "saved" ? <p className={styles.noteState}>{t("item.detail.saved")}</p> : null}
+        <dl className={styles.detailList}>
+          <DetailRow label={t("item.field.status")} value={t(`item.state.${item.status}`)} />
+          <DetailRow label={t("area.picker.label")} value={areaName} />
+          <DetailRow label={t("item.field.scheduledDate")} value={item.scheduled_date ?? "-"} />
+          <DetailRow label={t("item.field.deadlineDate")} value={item.deadline_date ?? "-"} />
+          <DetailRow label={t("item.field.reviewDate")} value={item.review_date ?? "-"} />
+          <DetailRow
+            label={t("item.detail.syncState")}
+            value={
+              syncState === "pending"
+                ? t("sync.itemPending")
+                : syncState === "rejected"
+                  ? t("sync.itemRejected")
+                  : t("sync.synced")
+            }
+          />
+        </dl>
+      </>
+    ),
+    persistNote,
+  };
 }
 
 function renderMarkdown(markdown: string): ReactNode[] {

@@ -248,6 +248,17 @@
   font-weight: 650;
 }
 
+.mobileDetailDialog {
+  display: none;
+}
+
+.mobileDetailHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 @media (max-width: 1060px) {
   .pageGrid {
     grid-template-columns: minmax(0, 1fr);
@@ -256,6 +267,33 @@
   .detailPane {
     position: static;
   }
+}
+
+@media (max-width: 760px) {
+  .detailPane {
+    display: none;
+  }
+
+  .mobileDetailDialog {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    width: 100%;
+    max-width: none;
+    max-height: min(82vh, 720px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    transform: none;
+    animation: sheetUp 180ms ease-out;
+  }
+
 }
 
 @media (max-width: 640px) {
@@ -269,5 +307,17 @@
     bottom: 82px;
     left: var(--space-3);
     justify-content: space-between;
+  }
+}
+
+@keyframes sheetUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

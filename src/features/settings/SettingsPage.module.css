@@ -101,6 +101,16 @@
   justify-content: flex-end;
 }
 
+.mobileNavRow {
+  align-items: start;
+}
+
+.mobileNavControls {
+  display: grid;
+  min-width: min(100%, 340px);
+  gap: var(--space-3);
+}
+
 @media (max-width: 640px) {
   .fieldGrid,
   .profileGrid {
@@ -119,5 +129,9 @@
 
   .actions {
     justify-content: start;
+  }
+
+  .mobileNavControls {
+    min-width: 0;
   }
 }
