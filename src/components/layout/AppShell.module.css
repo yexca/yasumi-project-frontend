@@ -150,11 +150,20 @@
 
 .syncStatus[data-sync-mode="offline"],
 .syncStatusCompact[data-sync-mode="offline"],
+.syncStatus[data-sync-mode="disconnected"],
+.syncStatusCompact[data-sync-mode="disconnected"],
 .syncStatus[data-sync-mode="blocked"],
 .syncStatusCompact[data-sync-mode="blocked"] {
   border-color: color-mix(in srgb, var(--color-text-muted) 34%, var(--color-border-default));
   background: var(--color-surface-subtle);
   color: var(--color-text-secondary);
+}
+
+.syncStatus[data-sync-mode="uploading"],
+.syncStatusCompact[data-sync-mode="uploading"] {
+  border-color: color-mix(in srgb, var(--color-accent-default) 34%, var(--color-border-default));
+  background: var(--color-accent-soft);
+  color: var(--color-accent-default);
 }
 
 .syncStatus[data-sync-mode="failed"],

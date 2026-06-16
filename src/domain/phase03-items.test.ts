@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import itemShapeFixture from "../../../dev_documents/contracts/fixtures/data/item-shapes-and-deadlines.json";
 import { getDeadlineAuthority, safeNormalizeItemRow } from "@/domain/items/schemas";
+import { readContractFixture } from "@/test/contractFixtures";
+
+const itemShapeFixture = readContractFixture<Fixture<ItemShapeScenario>>(
+  "data/item-shapes-and-deadlines.json",
+);
 
 describe("phase 03 item row normalization", () => {
   it("accepts valid item fragments for every MVP item type", () => {
@@ -62,3 +66,20 @@ function findScenario<TScenario extends { id: string }>(
 
   return scenario;
 }
+
+type Fixture<TScenario> = {
+  scenarios: TScenario[];
+};
+
+type ItemShapeScenario = {
+  id: string;
+  input: {
+    rows: Array<Record<string, unknown> & { id: string }>;
+  };
+  expected: {
+    acceptedRowIds?: string[];
+    deadlineAuthorityById?: Record<string, string>;
+    errorsByRowId?: Record<string, unknown>;
+    rejectedRowIds?: string[];
+  };
+};

@@ -3,7 +3,8 @@ import type { PropsWithChildren } from "react";
 import { useState } from "react";
 
 import { AuthProvider } from "@/features/auth/AuthProvider";
-import { PlanningDataProvider } from "@/features/planning/usePlanningData";
+import { PlanningDataProvider } from "@/features/planning/PlanningDataProvider";
+import { PowerSyncRuntimeProvider } from "@/features/sync/PowerSyncRuntimeProvider";
 import { I18nProvider } from "@/i18n/I18nProvider";
 import { ThemeProvider } from "@/styles/ThemeProvider";
 
@@ -22,13 +23,15 @@ export function AppProviders({ children }: PropsWithChildren) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <PlanningDataProvider>
-        <I18nProvider>
-          <ThemeProvider>
-            <AuthProvider>{children}</AuthProvider>
-          </ThemeProvider>
-        </I18nProvider>
-      </PlanningDataProvider>
+      <AuthProvider>
+        <PowerSyncRuntimeProvider>
+          <PlanningDataProvider>
+            <I18nProvider>
+              <ThemeProvider>{children}</ThemeProvider>
+            </I18nProvider>
+          </PlanningDataProvider>
+        </PowerSyncRuntimeProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

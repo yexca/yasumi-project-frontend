@@ -35,11 +35,33 @@ export function createYasumiPowerSyncConnector({
         return;
       }
 
+      const mutations = transaction.crud.map((entry) => {
+        const crud = entry.toJSON();
+        const oldValues = (crud.old ?? {}) as Record<string, unknown>;
+        const row = {
+          id: crud.id,
+          ...(crud.data ?? {}),
+        };
+
+        return {
+          client_observed: {
+            archived_at: optionalString(oldValues["archived_at"]),
+            deleted_at: optionalString(oldValues["deleted_at"]),
+            hidden_reason: optionalString(oldValues["hidden_reason"]),
+            revision: optionalNumber(oldValues["revision"]),
+            status: optionalString(oldValues["status"]),
+          },
+          op: mapCrudOp(crud.op),
+          row,
+          table: crud.type,
+        };
+      });
+
       const response = await fetch(`${getBackendBaseUrl()}/v1/sync/upload`, {
         body: JSON.stringify({
           client_batch_id: `batch-${transaction.transactionId ?? "untracked"}`,
           device_id: deviceId,
-          mutations: transaction.crud.map((entry) => entry.toJSON()),
+          mutations,
         }),
         headers: {
           Authorization: accessToken ? `Bearer ${accessToken}` : "",
@@ -55,4 +77,25 @@ export function createYasumiPowerSyncConnector({
       await transaction.complete();
     },
   };
+}
+
+function mapCrudOp(op: string): "delete" | "insert" | "update" {
+  switch (op) {
+    case "PUT":
+      return "insert";
+    case "PATCH":
+      return "update";
+    case "DELETE":
+      return "delete";
+    default:
+      return "update";
+  }
+}
+
+function optionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" ? value : undefined;
 }

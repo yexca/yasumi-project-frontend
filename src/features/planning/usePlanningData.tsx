@@ -42,6 +42,8 @@ import type { DateOnly } from "@/domain/time/dateOnly";
 import { validateStatusTransition } from "@/domain/transitions/status";
 import type { ItemActionId } from "@/features/items/itemPresentation";
 import { parseQuickAdd } from "@/features/quick-add/parser";
+import { useOptionalPowerSyncRuntime } from "@/features/sync/PowerSyncRuntimeProvider";
+import { useSyncedPlanningStore, type SyncedStore } from "./useSyncedPlanningStore";
 
 export type PlanningData = {
   areas: AreaDto[];
@@ -426,8 +428,19 @@ const initialOperationHistory: MinimalOperationHistoryRow[] = [
 
 const PlanningDataContext = createContext<PlanningState | null>(null);
 const PlanningMutationsContext = createContext<PlanningMutations | null>(null);
+const SyncedPlanningStoreContext = createContext<SyncedStore | null>(null);
 
 export function PlanningDataProvider({ children }: PropsWithChildren) {
+  const runtime = useOptionalPowerSyncRuntime();
+
+  if (runtime?.hasQueryRuntime === true) {
+    return <SyncedPlanningDataProvider>{children}</SyncedPlanningDataProvider>;
+  }
+
+  return <FixturePlanningDataProvider>{children}</FixturePlanningDataProvider>;
+}
+
+function FixturePlanningDataProvider({ children }: PropsWithChildren) {
   const [state, dispatch] = useReducer(planningReducer, undefined, buildInitialState);
   const stateRef = useRef(state);
 
@@ -499,12 +512,23 @@ export function PlanningDataProvider({ children }: PropsWithChildren) {
 }
 
 export function usePlanningData(): PlanningData {
+  const syncedStore = useContext(SyncedPlanningStoreContext);
   const state = useContext(PlanningDataContext);
+
+  if (syncedStore !== null) {
+    return syncedStore.data;
+  }
+
   return state ?? buildInitialState();
 }
 
 export function usePlanningMutations(): PlanningMutations {
+  const syncedStore = useContext(SyncedPlanningStoreContext);
   const mutations = useContext(PlanningMutationsContext);
+
+  if (syncedStore !== null) {
+    return syncedStore.mutations;
+  }
 
   if (mutations === null) {
     throw new Error("usePlanningMutations must be used within PlanningDataProvider");
@@ -514,6 +538,7 @@ export function usePlanningMutations(): PlanningMutations {
 }
 
 export function useSyncUiState(): SyncUiState {
+  const syncedStore = useContext(SyncedPlanningStoreContext);
   const state = useContext(PlanningDataContext) ?? buildInitialState();
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator !== "undefined" && "onLine" in navigator ? navigator.onLine : true,
@@ -536,6 +561,10 @@ export function useSyncUiState(): SyncUiState {
       window.removeEventListener("offline", updateOnlineState);
     };
   }, []);
+
+  if (syncedStore !== null) {
+    return syncedStore.syncUiState;
+  }
 
   if (state.rejectedWrites.length > 0) {
     return {
@@ -582,13 +611,28 @@ export function useSyncUiState(): SyncUiState {
 }
 
 export function useSyncSnapshot(): SyncSnapshot {
+  const syncedStore = useContext(SyncedPlanningStoreContext);
   const state = useContext(PlanningDataContext) ?? buildInitialState();
+
+  if (syncedStore !== null) {
+    return syncedStore.syncSnapshot;
+  }
 
   return {
     deviceId: state.deviceId,
     pendingMutations: state.pendingMutations,
     rejectedWrites: state.rejectedWrites,
   };
+}
+
+function SyncedPlanningDataProvider({ children }: PropsWithChildren) {
+  const store = useSyncedPlanningStore();
+
+  return (
+    <SyncedPlanningStoreContext.Provider value={store}>
+      {children}
+    </SyncedPlanningStoreContext.Provider>
+  );
 }
 
 export function buildInitialState(): PlanningState {

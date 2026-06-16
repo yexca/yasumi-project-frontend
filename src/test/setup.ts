@@ -4,6 +4,39 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
 type TestIndexedDbRecord = Record<string, unknown>;
+type TestPowerSyncListener = {
+  statusChanged?: (status: typeof testPowerSyncStatus) => void;
+};
+
+const testPowerSyncStatus = {
+  connected: true,
+  connecting: false,
+  dataFlowStatus: {
+    downloading: false,
+    uploading: false,
+  },
+  hasSynced: true,
+};
+
+export const testPowerSyncConnect = vi.fn(() => Promise.resolve());
+export const testPowerSyncDisconnect = vi.fn(() => Promise.resolve());
+export const testPowerSyncDisconnectAndClear = vi.fn(() => Promise.resolve());
+
+const testPowerSyncDatabase = {
+  connect: testPowerSyncConnect,
+  currentStatus: testPowerSyncStatus,
+  disconnect: testPowerSyncDisconnect,
+  disconnectAndClear: testPowerSyncDisconnectAndClear,
+  getNextCrudTransaction: vi.fn(() => Promise.resolve(null)),
+  registerListener: vi.fn((listener: TestPowerSyncListener) => {
+    listener.statusChanged?.(testPowerSyncStatus);
+    return vi.fn();
+  }),
+};
+
+vi.mock("@/repositories/powersync/client", () => ({
+  getPowerSyncDatabase: () => testPowerSyncDatabase,
+}));
 
 class TestIdbRequest<T> {
   error: Error | null = null;

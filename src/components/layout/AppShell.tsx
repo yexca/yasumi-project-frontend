@@ -11,7 +11,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router";
 
 import { useMobileNavSlots } from "@/app/navigation/mobileNavigation";
@@ -20,18 +20,15 @@ import { IconButton } from "@/components/primitives/Button";
 import { Menu, MenuItem } from "@/components/primitives/Menu";
 import { getDateOnlyInTimeZone } from "@/domain/time/dateOnly";
 import { useAuth } from "@/features/auth/AuthProvider";
-import {
-  usePlanningData,
-  usePlanningMutations,
-  useSyncSnapshot,
-  useSyncUiState,
-} from "@/features/planning/usePlanningData";
+import { usePlanningData, usePlanningMutations } from "@/features/planning/PlanningDataProvider";
+import { useSyncStatus } from "@/features/sync/useSyncStatus";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { getDefaultLocale } from "@/i18n/messages";
 import { useTheme } from "@/styles/ThemeProvider";
-import type { WeatherResponseDto } from "@/repositories/direct-api/dtos";
 
 import styles from "./AppShell.module.css";
+import { useShellClock } from "./useShellClock";
+import { useWeatherSummary } from "./useWeatherSummary";
 
 const QuickAddDialog = lazy(() =>
   import("@/features/items/ItemDialogs").then((module) => ({
@@ -46,23 +43,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { logout, session, status } = useAuth();
   const { areas, settings, today } = usePlanningData();
   const { updateSettings } = usePlanningMutations();
-  const syncSnapshot = useSyncSnapshot();
   const { resolvedMode, setThemeMode, themeMode } = useTheme();
-  const syncState = useSyncUiState();
-  const lastSyncAttemptKey = useRef("");
+  const syncStatus = useSyncStatus();
   const [areasOpen, setAreasOpen] = useState(true);
-  const [now, setNow] = useState(() => new Date());
-  const [weather, setWeather] = useState<WeatherResponseDto | null>(null);
+  const now = useShellClock();
+  const weather = useWeatherSummary({
+    accessToken: session?.accessToken ?? null,
+    enabled: Boolean(session?.accessToken && status !== "offline"),
+    weatherCity: settings.weather_city,
+  });
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const { mobileNavItems, moreNavItems } = useMobileNavSlots();
-  const effectiveWeather = session?.accessToken && status !== "offline" ? weather : null;
-  const effectiveSyncMode = status === "blocked" ? "blocked" : syncState.mode;
-  const effectiveSyncLabel =
-    status === "blocked"
-      ? t("sync.authBlocked")
-      : status === "offline"
-        ? t("sync.offline")
-        : t(syncState.labelKey);
   const isTodayRoute = pathname === ROUTE_PATHS.today;
 
   useEffect(() => {
@@ -73,70 +64,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     window.addEventListener("yasumi:quick-add", openQuickAdd);
     return () => window.removeEventListener("yasumi:quick-add", openQuickAdd);
   }, []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 30_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!session?.accessToken || status !== "signed_in") {
-      return;
-    }
-    if (syncSnapshot.pendingMutations.length === 0) {
-      return;
-    }
-
-    const attemptKey = syncSnapshot.pendingMutations
-      .map((mutation) => mutation.localMutationId)
-      .join(":");
-    if (attemptKey === lastSyncAttemptKey.current) {
-      return;
-    }
-    lastSyncAttemptKey.current = attemptKey;
-
-    let active = true;
-    const accessToken = session.accessToken;
-    import("@/features/sync/syncApi")
-      .then(({ flushLocalSync }) => flushLocalSync(accessToken, syncSnapshot.deviceId))
-      .then(() => {
-        if (!active) {
-          return;
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      active = false;
-    };
-  }, [session?.accessToken, status, syncSnapshot.deviceId, syncSnapshot.pendingMutations]);
-
-  useEffect(() => {
-    if (!session?.accessToken || !settings.weather_city.trim() || status === "offline") {
-      return;
-    }
-
-    let active = true;
-    const accessToken = session.accessToken;
-    const weatherCity = settings.weather_city;
-
-    import("@/features/weather/weatherApi")
-      .then(({ fetchWeather }) => fetchWeather(accessToken, weatherCity))
-      .then((nextWeather) => {
-        if (active) {
-          setWeather(nextWeather);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setWeather(null);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [session?.accessToken, settings.weather_city, status]);
 
   return (
     <div className={styles.shell}>
@@ -203,11 +130,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ),
           )}
         </nav>
-        <SyncStatus
-          count={syncState.rejectedCount || syncState.pendingCount}
-          label={effectiveSyncLabel}
-          mode={effectiveSyncMode}
-        />
+        <SyncStatus count={syncStatus.count} label={syncStatus.label} mode={syncStatus.mode} />
       </aside>
 
       <div className={styles.workspace}>
@@ -217,11 +140,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               {getDateOnlyInTimeZone(now, settings.time_zone)} ·{" "}
               {now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
             </p>
-            {effectiveWeather ? (
+            {weather ? (
               <span className={styles.weather} aria-label={t("weather.header.label")}>
                 <CloudSun aria-hidden="true" size={16} />
                 <span>
-                  {effectiveWeather.city} {effectiveWeather.temperature}°{effectiveWeather.unit}
+                  {weather.city} {weather.temperature}°{weather.unit}
                 </span>
               </span>
             ) : null}
@@ -229,9 +152,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className={styles.topActions}>
             <SyncStatus
               compact
-              count={syncState.rejectedCount || syncState.pendingCount}
-              label={effectiveSyncLabel}
-              mode={effectiveSyncMode}
+              count={syncStatus.count}
+              label={syncStatus.label}
+              mode={syncStatus.mode}
             />
             <label className={styles.utilitySelect}>
               <Languages aria-hidden="true" size={16} />

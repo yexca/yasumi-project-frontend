@@ -1,22 +1,23 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
 
 import type {
-  AccountUserDto,
   ChangePasswordRequestDto,
   AuthResponseDto,
   LoginRequestDto,
   RegisterRequestDto,
   UpdateProfileRequestDto,
+  AccountUserDto,
 } from "@/repositories/direct-api/dtos";
-import { getDirectApiErrorCode } from "@/repositories/direct-api/errorGuards";
 
-type StoredAuthSession = {
-  accessToken: string;
-  expiresAt: string;
-  refreshToken: string;
-  user: AccountUserDto;
-};
+import {
+  clearStoredSession,
+  persistSession,
+  readStoredSession,
+  type StoredAuthSession,
+} from "./authStorage";
+import { getOnlineState, useOnlineState } from "./useOnlineState";
+import { shouldRefresh, useSessionRefresh } from "./useSessionRefresh";
 
 type AuthStatus = "checking" | "signed_out" | "signed_in" | "offline" | "blocked";
 
@@ -32,18 +33,13 @@ type AuthContextValue = {
   updateProfile: (input: UpdateProfileRequestDto) => Promise<AccountUserDto>;
 };
 
-const AUTH_STORAGE_KEY = "yasumi:auth-session";
-const REFRESH_SKEW_MS = 60_000;
-
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [session, setSession] = useState<StoredAuthSession | null>(readStoredSession);
-  const [refreshStatus, setRefreshStatus] = useState<"checking" | "ready" | "blocked">(() =>
-    shouldAttemptInitialRefresh(readStoredSession()) ? "checking" : "ready",
-  );
+  const [initialSession] = useState(readStoredSession);
+  const [session, setSession] = useState<StoredAuthSession | null>(initialSession);
   const [errorCode, setErrorCode] = useState<string | null>(null);
-  const [isOffline, setIsOffline] = useState(() => getOnlineState() === false);
+  const isOffline = useOnlineState();
 
   const commitAuthResponse = useCallback((response: AuthResponseDto) => {
     const nextSession: StoredAuthSession = {
@@ -55,9 +51,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     persistSession(nextSession);
     setSession(nextSession);
-    setRefreshStatus("ready");
     setErrorCode(null);
   }, []);
+
+  const refreshStatus = useSessionRefresh({
+    commitAuthResponse,
+    isOffline,
+    session,
+    setErrorCode,
+    setSession,
+  });
 
   const login = useCallback(
     async (input: LoginRequestDto) => {
@@ -111,7 +114,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
     const accessToken = session?.accessToken;
     clearStoredSession();
     setSession(null);
-    setRefreshStatus("ready");
     setErrorCode(null);
 
     if (accessToken && getOnlineState()) {
@@ -119,73 +121,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
       await logoutSession(accessToken).catch(() => undefined);
     }
   }, [session?.accessToken]);
-
-  useEffect(() => {
-    function handleOnlineState() {
-      setIsOffline(getOnlineState() === false);
-    }
-
-    window.addEventListener("online", handleOnlineState);
-    window.addEventListener("offline", handleOnlineState);
-    handleOnlineState();
-
-    return () => {
-      window.removeEventListener("online", handleOnlineState);
-      window.removeEventListener("offline", handleOnlineState);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (session === null) {
-      return;
-    }
-
-    if (!shouldRefresh(session)) {
-      return;
-    }
-
-    if (isOffline) {
-      return;
-    }
-
-    let isActive = true;
-    const refreshToken = session.refreshToken;
-
-    async function refreshActiveSession() {
-      const { refreshSession } = await import("./authApi");
-
-      return refreshSession(refreshToken);
-    }
-
-    refreshActiveSession()
-      .then((response) => {
-        if (isActive) {
-          commitAuthResponse(response);
-        }
-      })
-      .catch((error: unknown) => {
-        if (!isActive) {
-          return;
-        }
-
-        const apiErrorCode = getDirectApiErrorCode(error);
-
-        if (apiErrorCode !== null) {
-          setErrorCode(apiErrorCode);
-          clearStoredSession();
-          setSession(null);
-          setRefreshStatus("ready");
-          return;
-        }
-
-        setRefreshStatus("ready");
-        setErrorCode("service_unavailable");
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [commitAuthResponse, isOffline, session]);
 
   const status: AuthStatus =
     session === null
@@ -234,55 +169,4 @@ export function useAuth() {
   }
 
   return value;
-}
-
-function shouldRefresh(session: StoredAuthSession): boolean {
-  return new Date(session.expiresAt).getTime() - Date.now() <= REFRESH_SKEW_MS;
-}
-
-function shouldAttemptInitialRefresh(session: StoredAuthSession | null): boolean {
-  return session !== null && shouldRefresh(session) && getOnlineState();
-}
-
-function readStoredSession(): StoredAuthSession | null {
-  if (typeof localStorage === "undefined") {
-    return null;
-  }
-
-  const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-
-  if (!stored) {
-    return null;
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(stored);
-
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "accessToken" in parsed &&
-      "refreshToken" in parsed &&
-      "expiresAt" in parsed &&
-      "user" in parsed
-    ) {
-      return parsed as StoredAuthSession;
-    }
-  } catch {
-    clearStoredSession();
-  }
-
-  return null;
-}
-
-function persistSession(session: StoredAuthSession): void {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
-}
-
-function clearStoredSession(): void {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-}
-
-function getOnlineState(): boolean {
-  return typeof navigator === "undefined" || !("onLine" in navigator) ? true : navigator.onLine;
 }

@@ -1,6 +1,6 @@
 import { createContext, useContext, useMemo, type PropsWithChildren } from "react";
 
-import { usePlanningData } from "@/features/planning/usePlanningData";
+import { usePlanningData } from "@/features/planning/PlanningDataProvider";
 
 import { detectLanguage, formatMessage, messages } from "./messages";
 

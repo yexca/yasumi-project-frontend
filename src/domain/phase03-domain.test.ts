@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import settingsFixture from "../../../dev_documents/contracts/fixtures/domain/settings-defaults.json";
-import statusFixture from "../../../dev_documents/contracts/fixtures/domain/status-transitions.json";
-import duePostponedFixture from "../../../dev_documents/contracts/fixtures/sync/due-postponed-activation.json";
 import { buildDefaultUserSettings } from "@/domain/settings/defaults";
 import { canTransitionStatus, validateStatusTransition } from "@/domain/transitions/status";
 import type { BusinessStatus, LanguageCode } from "@/domain/constants/shared";
@@ -12,6 +9,16 @@ import { planDuePostponedActivation } from "@/domain/items/postponedActivation";
 import { buildRecurrenceActionIdempotencyKey } from "@/domain/idempotency";
 import { addDays, assertDateOnly, isInstant } from "@/domain/time/dateOnly";
 import type { HiddenReason } from "@/domain/constants/shared";
+import { readContractFixture } from "@/test/contractFixtures";
+
+const settingsFixture =
+  readContractFixture<Fixture<SettingsScenario>>("domain/settings-defaults.json");
+const statusFixture = readContractFixture<
+  Fixture<TransitionScenario | InvalidTransitionScenario | MetadataScenario>
+>("domain/status-transitions.json");
+const duePostponedFixture = readContractFixture<Fixture<PostponedScenario>>(
+  "sync/due-postponed-activation.json",
+);
 
 describe("phase 03 domain contracts", () => {
   it("accepts and rejects documented status transitions", () => {
@@ -74,7 +81,7 @@ describe("phase 03 domain contracts", () => {
     for (const scenario of settingsFixture.scenarios) {
       expect(
         buildDefaultUserSettings(
-          scenario.input.language as LanguageCode,
+          scenario.input.language,
           scenario.context.device_time_zone,
         ),
       ).toEqual(scenario.expected.settings);
@@ -144,6 +151,7 @@ function findScenario<TScenario extends { id: string }>(
 }
 
 type TransitionScenario = {
+  id: string;
   input: {
     transitions: [BusinessStatus, BusinessStatus][];
   };
@@ -162,6 +170,7 @@ type InvalidTransitionScenario = TransitionScenario & {
 };
 
 type MetadataScenario = {
+  id: string;
   input: {
     rows: {
       id: string;
@@ -175,4 +184,32 @@ type MetadataScenario = {
     visibilityById: Record<string, string>;
     normalPlanningVisibleIds: string[];
   };
+};
+
+type Fixture<TScenario> = {
+  context: {
+    active_app_date: string;
+  };
+  scenarios: TScenario[];
+};
+
+type SettingsScenario = {
+  id: string;
+  context: {
+    device_time_zone: string;
+  };
+  input: {
+    language: LanguageCode;
+  };
+  expected: {
+    settings: unknown;
+  };
+};
+
+type PostponedScenario = {
+  id: string;
+  input: {
+    item: object;
+  };
+  expected: object;
 };

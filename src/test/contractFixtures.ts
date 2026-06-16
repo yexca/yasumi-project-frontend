@@ -5,7 +5,8 @@ export function readContractFixture<T>(fixturePath: string): T {
   const absolutePath = resolve(
     process.cwd(),
     "..",
-    "dev_documents",
+    "docs",
+    "original-development-docs",
     "contracts",
     "fixtures",
     fixturePath,

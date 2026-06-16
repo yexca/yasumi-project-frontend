@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import todayFixture from "../../../../dev_documents/contracts/fixtures/recommendation/today-sections-and-ranking.json";
 import { normalizeItemRow, type MinimalOperationHistoryRow } from "@/domain/items/schemas";
 import { buildTodayViewModel, sortPrimaryCandidates } from "@/repositories/local-db/readModels";
+import { readContractFixture } from "@/test/contractFixtures";
+
+const todayFixture = readContractFixture<Fixture<TodaySectionsScenario | TieBreakScenario>>(
+  "recommendation/today-sections-and-ranking.json",
+);
 
 describe("phase 03 local read models", () => {
   it("builds Today sections in contract order without duplicated items", () => {
@@ -76,6 +80,7 @@ function findScenario<TScenario extends { id: string }>(
 }
 
 type TodaySectionsScenario = {
+  id: string;
   input: {
     items: unknown[];
     operation_history: MinimalOperationHistoryRow[];
@@ -87,6 +92,7 @@ type TodaySectionsScenario = {
 };
 
 type TieBreakScenario = {
+  id: string;
   input: {
     candidates: {
       id: string;
@@ -99,4 +105,17 @@ type TieBreakScenario = {
   expected: {
     orderedCandidateIds: string[];
   };
+};
+
+type Fixture<TScenario> = {
+  context: {
+    active_app_date: string;
+    settings: {
+      deadline_awareness_days: number;
+      today_primary_lookahead_days: number;
+    };
+    time_zone: string;
+    user_id: string;
+  };
+  scenarios: TScenario[];
 };
