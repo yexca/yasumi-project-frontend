@@ -272,6 +272,10 @@
   display: none;
 }
 
+.mobileQuickAdd {
+  display: none;
+}
+
 .mobileNavLink {
   display: inline-flex;
   min-height: 56px;
@@ -370,6 +374,32 @@
     background: var(--surface-panel-background);
     padding: 8px;
     box-shadow: 0 -10px 28px rgb(15 23 42 / 8%);
+  }
+
+  .mobileQuickAdd {
+    position: fixed;
+    right: 16px;
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
+    z-index: 21;
+    display: inline-grid;
+    width: 56px;
+    height: 56px;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--color-accent-strong) 78%, #000000 0%);
+    border-radius: 999px;
+    background: linear-gradient(
+      180deg,
+      var(--color-accent-default) 0%,
+      var(--color-accent-strong) 100%
+    );
+    color: #ffffff;
+    box-shadow:
+      0 14px 28px rgb(15 23 42 / 18%),
+      0 4px 12px rgb(15 23 42 / 10%);
+  }
+
+  .mobileQuickAdd:hover {
+    transform: translateY(-1px);
   }
 
   .weather {

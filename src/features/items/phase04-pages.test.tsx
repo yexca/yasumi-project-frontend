@@ -1,9 +1,21 @@
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { App } from "@/app/App";
 import { seedAuthSession } from "@/test/setup";
+
+const originalInnerWidth = window.innerWidth;
+const originalMatchMedia = window.matchMedia;
+
+afterEach(() => {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    value: originalInnerWidth,
+    writable: true,
+  });
+  window.matchMedia = originalMatchMedia;
+});
 
 describe("phase 04 pages and action surfaces", () => {
   it("renders Today sections in planning order with recommendation reasons", async () => {
@@ -130,6 +142,36 @@ describe("phase 04 pages and action surfaces", () => {
     expect(within(main).getByLabelText("App timezone")).toBeInTheDocument();
     expect(within(main).queryByLabelText("Date display")).not.toBeInTheDocument();
     expect(screen.getByText("Appearance")).toBeInTheDocument();
+  });
+
+  it("keeps a floating Quick Add button on mobile", async () => {
+    cleanup();
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 390,
+      writable: true,
+    });
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      addEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      matches: query === "(max-width: 760px)" || query === "(pointer: coarse)",
+      media: query,
+      onchange: null,
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })) as typeof window.matchMedia;
+
+    window.history.pushState({}, "", "/today");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Today", level: 2 });
+    await user.click(screen.getAllByRole("button", { name: "Quick Add" }).at(-1)!);
+
+    expect(await screen.findByRole("dialog", { name: "Quick Add" })).toBeInTheDocument();
   });
 });
 

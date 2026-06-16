@@ -243,6 +243,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Menu>
       </nav>
 
+      <button
+        aria-label={t("quickAdd.button")}
+        className={styles.mobileQuickAdd}
+        onClick={() => setQuickAddOpen(true)}
+        type="button"
+      >
+        <Plus aria-hidden="true" size={22} />
+        <span className="visually-hidden">{t("quickAdd.button")}</span>
+      </button>
+
       {quickAddOpen ? (
         <QuickAddDialog
           defaultCapture={

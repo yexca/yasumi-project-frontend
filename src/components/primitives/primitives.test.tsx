@@ -1,11 +1,17 @@
 import { Check, MoreHorizontal } from "lucide-react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DenseItemRow } from "@/components/items/DenseItemRow";
 import { IconButton } from "@/components/primitives/Button";
 import { SegmentedControl } from "@/components/primitives/ChoiceControls";
+
+const originalMatchMedia = window.matchMedia;
+
+afterEach(() => {
+  window.matchMedia = originalMatchMedia;
+});
 
 describe("primitives", () => {
   it("requires icon buttons to expose an accessible name", () => {
@@ -64,5 +70,29 @@ describe("primitives", () => {
     expect(screen.getByText("Scheduled today")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Complete" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
+  });
+
+  it("disables tooltips on coarse pointer devices", () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      addEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      matches: query === "(pointer: coarse)",
+      media: query,
+      onchange: null,
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })) as typeof window.matchMedia;
+
+    render(
+      <IconButton
+        aria-label="Close item"
+        icon={<Check aria-hidden="true" size={16} />}
+        tooltip="Close item"
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Close item" })).toBeInTheDocument();
+    expect(screen.queryByText("Close item")).not.toBeInTheDocument();
   });
 });
