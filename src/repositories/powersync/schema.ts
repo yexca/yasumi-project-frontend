@@ -80,6 +80,17 @@ export const yasumiPowerSyncSchema = new Schema({
     },
     { insertOnly: true },
   ),
+  pending_write_context: new Table(
+    {
+      action: column.text,
+      client_action_id: column.text,
+      created_at: column.text,
+      idempotency_key: column.text,
+      row_id: column.text,
+      table_name: column.text,
+    },
+    { localOnly: true },
+  ),
   recurring_task_templates: new Table({
     ...syncColumns,
     area_id: column.text,

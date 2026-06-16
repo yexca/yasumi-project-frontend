@@ -3,6 +3,13 @@ import type { AbstractPowerSyncDatabase, PowerSyncBackendConnector } from "@powe
 import { getBackendBaseUrl, getPowerSyncEndpoint } from "@/repositories/direct-api/config";
 import { requestSyncToken } from "@/repositories/direct-api/syncTokenRepository";
 
+type ApiErrorBody = {
+  code: string;
+  fields: Record<string, string>;
+  message: string;
+  retryable: boolean;
+};
+
 type UploadMutation = {
   client_observed: ObservedState;
   op: "delete" | "insert" | "update";
@@ -98,9 +105,18 @@ export function createYasumiPowerSyncConnector({
       });
 
       if (!response.ok) {
+        const errorBody = await readStableErrorBody(response);
+
+        if (errorBody !== null) {
+          await recordRejectedUpload(database, uploadMutations, errorBody);
+          await transaction.complete();
+          return;
+        }
+
         throw new Error("sync_upload_failed");
       }
 
+      await clearPendingUploads(database, uploadMutations);
       await transaction.complete();
     },
   };
@@ -122,17 +138,18 @@ async function buildUploadRow(
   );
 
   if (table === "user_settings") {
-    const userId = optionalString(localRow?.["user_id"]) ?? optionalString(changedData["user_id"]) ?? id;
+    const userId =
+      optionalString(localRow?.["user_id"]) ?? optionalString(changedData["user_id"]) ?? id;
     return {
       id: userId,
-      ...(localRow ?? changedData),
+      ...deserializeUploadRow(table, localRow ?? changedData),
       user_id: userId,
     };
   }
 
   return {
     id,
-    ...(localRow ?? changedData),
+    ...deserializeUploadRow(table, localRow ?? changedData),
   };
 }
 
@@ -144,6 +161,46 @@ function isSyncedTable(table: string): boolean {
     "recurring_task_templates",
     "user_settings",
   ].includes(table);
+}
+
+function deserializeUploadRow(
+  table: string,
+  row: Record<string, unknown>,
+): Record<string, unknown> {
+  const out = { ...row };
+
+  for (const columnName of jsonColumnsForTable(table)) {
+    if (columnName in out) {
+      out[columnName] = parseJsonField(out[columnName]);
+    }
+  }
+
+  return out;
+}
+
+function jsonColumnsForTable(table: string): string[] {
+  switch (table) {
+    case "items":
+      return ["pressure_metadata", "quick_add_parse_result"];
+    case "operation_history":
+      return ["previous_value", "new_value"];
+    case "recurring_task_templates":
+      return ["weekdays", "reminder_rule", "generated_task_defaults"];
+    default:
+      return [];
+  }
+}
+
+function parseJsonField(value: unknown): unknown {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
 }
 
 async function withSemanticCompanionOperations(
@@ -188,15 +245,10 @@ async function withSemanticCompanionOperations(
     }
 
     const updatedAt = optionalString(mutation.row["updated_at"]) ?? "";
-    const now = optionalString(mutation.row["client_updated_at"]) ?? updatedAt ?? new Date().toISOString();
+    const now =
+      optionalString(mutation.row["client_updated_at"]) ?? updatedAt ?? new Date().toISOString();
     const userId = optionalString(mutation.row["user_id"]) ?? "";
-    const idempotencyKey = buildSemanticActionKey(
-      userId,
-      deviceId,
-      itemId,
-      eventType,
-      now,
-    );
+    const idempotencyKey = buildSemanticActionKey(userId, deviceId, itemId, eventType, now);
     out.push({
       client_observed: {},
       op: "insert",
@@ -206,8 +258,8 @@ async function withSemanticCompanionOperations(
         item_id: itemId,
         recurring_template_id: mutation.row["recurring_template_id"] ?? null,
         event_type: eventType,
-        previous_value: JSON.stringify(getPreviousValue(mutation)),
-        new_value: JSON.stringify(getNewValue(mutation)),
+        previous_value: getPreviousValue(mutation),
+        new_value: getNewValue(mutation),
         reason: null,
         idempotency_key: idempotencyKey,
         created_at: now,
@@ -322,6 +374,162 @@ function mapCrudOp(op: string): "delete" | "insert" | "update" {
     default:
       return "update";
   }
+}
+
+async function readStableErrorBody(response: Response): Promise<ApiErrorBody | null> {
+  const contentType = response.headers.get("Content-Type") ?? "";
+  if (!contentType.includes("application/json")) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = await response.json();
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    const body = parsed as Partial<ApiErrorBody>;
+    if (
+      typeof body.code !== "string" ||
+      typeof body.message !== "string" ||
+      typeof body.retryable !== "boolean" ||
+      (body.fields !== undefined && !isStringRecord(body.fields))
+    ) {
+      return null;
+    }
+
+    return {
+      code: body.code,
+      fields: body.fields ?? {},
+      message: body.message,
+      retryable: body.retryable,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function recordRejectedUpload(
+  database: AbstractPowerSyncDatabase,
+  mutations: UploadMutation[],
+  error: ApiErrorBody,
+): Promise<void> {
+  const now = new Date().toISOString();
+  const contexts = new Map<string, Awaited<ReturnType<typeof findPendingContext>>>();
+
+  for (const mutation of mutations) {
+    const rowId = optionalString(mutation.row["id"]);
+    if (rowId && isRecoverableTable(mutation.table)) {
+      contexts.set(
+        contextKey(mutation.table, rowId),
+        await findPendingContext(database, mutation.table, rowId),
+      );
+    }
+  }
+
+  await database.writeTransaction(async (tx) => {
+    for (const mutation of mutations) {
+      const rowId = optionalString(mutation.row["id"]);
+      if (!rowId || !isRecoverableTable(mutation.table)) {
+        continue;
+      }
+
+      const context = contexts.get(contextKey(mutation.table, rowId)) ?? null;
+      const idempotencyKey =
+        optionalString(mutation.row["idempotency_key"]) ?? context?.idempotency_key ?? null;
+
+      await tx.execute(
+        `INSERT OR REPLACE INTO rejected_write_context (
+          id, action, client_action_id, created_at, error_code, field_errors, idempotency_key,
+          retryable, row_id, table_name
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          context?.id ?? createUuid(),
+          context?.action ?? inferAction(mutation),
+          context?.client_action_id ?? null,
+          now,
+          error.code,
+          JSON.stringify(error.fields),
+          idempotencyKey,
+          error.retryable ? 1 : 0,
+          rowId,
+          mutation.table,
+        ],
+      );
+      await tx.execute("DELETE FROM pending_write_context WHERE table_name = ? AND row_id = ?", [
+        mutation.table,
+        rowId,
+      ]);
+    }
+  });
+}
+
+async function clearPendingUploads(
+  database: AbstractPowerSyncDatabase,
+  mutations: UploadMutation[],
+): Promise<void> {
+  await database.writeTransaction(async (tx) => {
+    for (const mutation of mutations) {
+      const rowId = optionalString(mutation.row["id"]);
+      if (rowId && isRecoverableTable(mutation.table)) {
+        await tx.execute("DELETE FROM pending_write_context WHERE table_name = ? AND row_id = ?", [
+          mutation.table,
+          rowId,
+        ]);
+      }
+    }
+  });
+}
+
+async function findPendingContext(
+  database: AbstractPowerSyncDatabase,
+  table: string,
+  rowId: string,
+): Promise<{
+  action: string;
+  client_action_id: string | null;
+  id: string;
+  idempotency_key: string | null;
+} | null> {
+  return (
+    (await database.getOptional(
+      `SELECT id, action, client_action_id, idempotency_key
+       FROM pending_write_context
+       WHERE table_name = ? AND row_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [table, rowId],
+    )) ?? null
+  );
+}
+
+function inferAction(mutation: UploadMutation): string {
+  switch (mutation.op) {
+    case "insert":
+      return "create";
+    case "delete":
+      return "delete";
+    case "update":
+      return "edit";
+    default:
+      return "edit";
+  }
+}
+
+function contextKey(table: string, rowId: string): string {
+  return `${table}:${rowId}`;
+}
+
+function isRecoverableTable(table: string): boolean {
+  return ["areas", "items", "recurring_task_templates", "user_settings"].includes(table);
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    Object.values(value).every((entry) => typeof entry === "string")
+  );
 }
 
 function optionalString(value: unknown): string | undefined {

@@ -48,10 +48,7 @@ export type SyncedStore = {
   syncUiState: SyncUiState;
 };
 
-type SyncedItemRow = Omit<
-  LocalItemRow,
-  "pressure_metadata" | "quick_add_parse_result"
-> & {
+type SyncedItemRow = Omit<LocalItemRow, "pressure_metadata" | "quick_add_parse_result"> & {
   pressure_metadata: string | JsonObject | null;
   quick_add_parse_result: string | JsonObject | null;
 };
@@ -97,6 +94,16 @@ type RejectedWriteRow = {
   table_name: RejectedWriteContext["table"];
 };
 
+type PendingWriteRow = {
+  action: RejectedWriteContext["action"];
+  client_action_id: string;
+  created_at: string;
+  id: string;
+  idempotency_key: string;
+  row_id: string;
+  table_name: RejectedWriteContext["table"];
+};
+
 export function useSyncedPlanningStore(): SyncedStore {
   const { session } = useAuth();
   const { database, deviceId } = usePowerSyncRuntime();
@@ -116,12 +123,12 @@ export function useSyncedPlanningStore(): SyncedStore {
   const rejectedQuery = useQuery<RejectedWriteRow>(
     "SELECT * FROM rejected_write_context ORDER BY created_at DESC",
   );
+  const pendingQuery = useQuery<PendingWriteRow>(
+    "SELECT * FROM pending_write_context ORDER BY created_at ASC",
+  );
 
   const today = getDateOnlyInTimeZone(new Date(), getDefaultDeviceTimeZone());
-  const settings = useMemo(
-    () => normalizeSettings(settingsQuery.data[0]),
-    [settingsQuery.data],
-  );
+  const settings = useMemo(() => normalizeSettings(settingsQuery.data[0]), [settingsQuery.data]);
   const items = useMemo(
     () => itemsQuery.data.map(normalizeSyncedItem).filter(isPresent),
     [itemsQuery.data],
@@ -137,6 +144,10 @@ export function useSyncedPlanningStore(): SyncedStore {
   const rejectedWrites = useMemo(
     () => rejectedQuery.data.map(normalizeRejectedWrite),
     [rejectedQuery.data],
+  );
+  const pendingMutations = useMemo(
+    () => pendingQuery.data.map(normalizePendingWrite),
+    [pendingQuery.data],
   );
 
   const data = useMemo<PlanningData>(
@@ -157,10 +168,11 @@ export function useSyncedPlanningStore(): SyncedStore {
         data,
         database,
         deviceId,
+        pendingMutations,
         rejectedWrites,
         userId,
       }),
-    [data, database, deviceId, rejectedWrites, userId],
+    [data, database, deviceId, pendingMutations, rejectedWrites, userId],
   );
 
   return {
@@ -168,13 +180,19 @@ export function useSyncedPlanningStore(): SyncedStore {
     mutations,
     syncSnapshot: {
       deviceId,
-      pendingMutations: [],
+      pendingMutations,
       rejectedWrites,
     },
     syncUiState: {
-      labelKey: rejectedWrites.length > 0 ? "sync.validationRejected" : "sync.synced",
-      mode: rejectedWrites.length > 0 ? "rejected" : "synced",
-      pendingCount: 0,
+      labelKey:
+        rejectedWrites.length > 0
+          ? "sync.validationRejected"
+          : pendingMutations.length > 0
+            ? "sync.pending"
+            : "sync.synced",
+      mode:
+        rejectedWrites.length > 0 ? "rejected" : pendingMutations.length > 0 ? "pending" : "synced",
+      pendingCount: pendingMutations.length,
       rejectedCount: rejectedWrites.length,
     },
   };
@@ -184,12 +202,14 @@ function buildSyncedMutations({
   data,
   database,
   deviceId,
+  pendingMutations,
   rejectedWrites,
   userId,
 }: {
   data: PlanningData;
   database: AbstractPowerSyncDatabase;
   deviceId: string;
+  pendingMutations: LocalMutationContext[];
   rejectedWrites: RejectedWriteContext[];
   userId: string | null;
 }): PlanningMutations {
@@ -205,7 +225,8 @@ function buildSyncedMutations({
     table: LocalMutationContext["table"],
     rowId: string,
     action: RejectedWriteContext["action"],
-    fn: (context: WriteContext) => Promise<void>,
+    fn: (context: WriteContext, tx: WriteTransaction) => Promise<void>,
+    onRejected?: (error: ContractError, context: WriteContext) => Promise<void> | void,
   ): MutationResult => {
     const authError = ensureUser();
     const now = new Date().toISOString();
@@ -224,20 +245,30 @@ function buildSyncedMutations({
       return { ok: false, error: authError };
     }
 
-    void fn({
+    const context: WriteContext = {
       clientActionId,
       database,
       deviceId,
       idempotencyKey: mutation.idempotencyKey,
       now,
       userId: userId ?? "",
-    }).catch((error: unknown) => {
-      const contractError =
-        error && typeof error === "object" && "code" in error
-          ? (error as ContractError)
-          : validationError({ title: "local_write_failed" });
-      void writeRejectedContext(database, mutation, contractError, now);
-    });
+    };
+
+    void database
+      .writeTransaction(async (tx) => {
+        await fn(context, tx);
+        await insertPendingContext(tx, mutation, now);
+      })
+      .catch((error: unknown) => {
+        const contractError =
+          error && typeof error === "object" && "code" in error
+            ? (error as ContractError)
+            : validationError({ title: "local_write_failed" });
+        void (async () => {
+          await writeRejectedContext(database, mutation, contractError, now);
+          await onRejected?.(contractError, context);
+        })();
+      });
 
     return { ok: true, mutation };
   };
@@ -252,20 +283,27 @@ function buildSyncedMutations({
         return { ok: false, error: validationError({ title: "item_not_found" }) };
       }
 
-      const projected = classifySyncedItem(item, input, data.today);
-      return writeItemUpdate(database, deviceId, userId, item, projected, "classify");
+      return classifySyncedItem(database, deviceId, userId, item, input, data.today);
     },
     createCapture(input) {
       const rowId = createUuid();
-      return execute("items", rowId, "create", (context) =>
-        database.writeTransaction(async (tx) => {
-          await insertItem(tx, buildCaptureRow(data, input, context, rowId));
-        }),
-      );
+      return execute("items", rowId, "create", async (context, tx) => {
+        await insertItem(tx, buildCaptureRow(data, input, context, rowId));
+      });
     },
     deleteArea(areaId, choice) {
-      return execute("areas", areaId, "area_delete", (context) =>
-        database.writeTransaction(async (tx) => {
+      const affectedItems =
+        choice === "area_and_items" ? data.items.filter((item) => item.area_id === areaId) : [];
+      const itemMutations = affectedItems.map((item) =>
+        buildRejectedMutation(userId, deviceId, "items", item.id, "delete"),
+      );
+      const itemMutationById = new Map(itemMutations.map((mutation) => [mutation.rowId, mutation]));
+
+      return execute(
+        "areas",
+        areaId,
+        "area_delete",
+        async (context, tx) => {
           const timestampPatch =
             choice === "area_and_items"
               ? { deleted_at: context.now }
@@ -288,11 +326,38 @@ function buildSyncedMutations({
             );
             return;
           }
-          await tx.execute(
-            "UPDATE items SET deleted_at = ?, updated_at = ?, client_updated_at = ?, updated_by_device_id = ? WHERE area_id = ?",
-            [context.now, context.now, context.now, context.deviceId, areaId],
-          );
-        }),
+          for (const item of affectedItems) {
+            const itemMutation = itemMutationById.get(item.id);
+
+            if (!itemMutation) {
+              continue;
+            }
+
+            await tx.execute(
+              "UPDATE items SET deleted_at = ?, updated_at = ?, client_updated_at = ?, updated_by_device_id = ? WHERE id = ?",
+              [context.now, context.now, context.now, context.deviceId, item.id],
+            );
+            await insertOperationHistory(tx, {
+              created_at: context.now,
+              created_by_device_id: context.deviceId,
+              event_type: "deleted",
+              id: createUuid(),
+              idempotency_key: itemMutation.idempotencyKey,
+              item_id: item.id,
+              new_value: { deleted_at: context.now },
+              previous_value: { area_id: areaId, deleted_at: item.deleted_at },
+              reason: null,
+              recurring_template_id: item.recurring_template_id,
+              user_id: context.userId,
+            });
+            await insertPendingContext(tx, itemMutation, context.now);
+          }
+        },
+        async (error, context) => {
+          for (const itemMutation of itemMutations) {
+            await writeRejectedContext(database, itemMutation, error, context.now);
+          }
+        },
       );
     },
     editItem(itemId, input) {
@@ -316,7 +381,15 @@ function buildSyncedMutations({
       );
     },
     getItemSyncState(itemId) {
-      return rejectedWrites.some((context) => context.rowId === itemId) ? "rejected" : null;
+      if (rejectedWrites.some((context) => context.rowId === itemId)) {
+        return "rejected";
+      }
+
+      if (pendingMutations.some((mutation) => mutation.rowId === itemId)) {
+        return "pending";
+      }
+
+      return null;
     },
     getRejectedContextForRow(rowId) {
       return rejectedWrites.find((context) => context.rowId === rowId) ?? null;
@@ -383,36 +456,46 @@ function buildSyncedMutations({
       };
 
       if (!isUserSettingsDefaults(candidate)) {
-        const candidateTimeZone = typeof candidate.time_zone === "string" ? candidate.time_zone : "";
+        const candidateTimeZone =
+          typeof candidate.time_zone === "string" ? candidate.time_zone : "";
         const error = validationError(
           isValidTimeZone(candidateTimeZone)
             ? { language: "invalid_setting" }
             : { time_zone: "invalid_time_zone" },
         );
-        const mutation = buildRejectedMutation(userId, deviceId, "user_settings", userId ?? "settings", "settings_update");
+        const mutation = buildRejectedMutation(
+          userId,
+          deviceId,
+          "user_settings",
+          userId ?? "settings",
+          "settings_update",
+        );
         void writeRejectedContext(database, mutation, error, now);
         return { ok: false, error };
       }
 
-      return execute("user_settings", userId ?? "settings", "settings_update", (context) =>
-        database.writeTransaction(async (tx) => {
+      return execute(
+        "user_settings",
+        userId ?? "settings",
+        "settings_update",
+        async (context, tx) => {
           await tx.execute(
             `UPDATE user_settings SET
-              language = ?,
-              locale = ?,
-              week_start_day = ?,
-              time_zone = ?,
-              date_display_format = ?,
-              time_display_format = ?,
-              default_time_zone_mode = ?,
-              today_primary_lookahead_days = ?,
-              deadline_awareness_days = ?,
-              weather_city = ?,
-              updated_at = ?,
-              client_updated_at = ?,
-              updated_by_device_id = ?,
-              revision = ?
-            WHERE id = ?`,
+            language = ?,
+            locale = ?,
+            week_start_day = ?,
+            time_zone = ?,
+            date_display_format = ?,
+            time_display_format = ?,
+            default_time_zone_mode = ?,
+            today_primary_lookahead_days = ?,
+            deadline_awareness_days = ?,
+            weather_city = ?,
+            updated_at = ?,
+            client_updated_at = ?,
+            updated_by_device_id = ?,
+            revision = ?
+          WHERE id = ?`,
             [
               candidate.language,
               candidate.locale,
@@ -433,13 +516,13 @@ function buildSyncedMutations({
           );
           await tx.execute(
             `INSERT INTO user_settings (
-              id, user_id, language, locale, week_start_day, time_zone, date_display_format,
-              time_display_format, default_time_zone_mode, today_primary_lookahead_days,
-              deadline_awareness_days, weather_city, created_at, updated_at, client_updated_at,
-              server_updated_at, created_by_device_id, updated_by_device_id, revision
-            )
-            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE id = ?)`,
+            id, user_id, language, locale, week_start_day, time_zone, date_display_format,
+            time_display_format, default_time_zone_mode, today_primary_lookahead_days,
+            deadline_awareness_days, weather_city, created_at, updated_at, client_updated_at,
+            server_updated_at, created_by_device_id, updated_by_device_id, revision
+          )
+          SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE id = ?)`,
             [
               context.userId,
               context.userId,
@@ -463,7 +546,7 @@ function buildSyncedMutations({
               context.userId,
             ],
           );
-        }),
+        },
       );
     },
   };
@@ -497,35 +580,38 @@ function writeItemUpdate(
 
   const now = new Date().toISOString();
   const mutation = buildRejectedMutation(userId, deviceId, "items", previous.id, action);
-  void database.writeTransaction(async (tx) => {
-    await updateItemRow(tx, {
-      ...parsed.row,
-      client_updated_at: now,
-      updated_at: now,
-      updated_by_device_id: deviceId,
-    });
-    if (eventType) {
-      await insertOperationHistory(tx, {
-        created_at: now,
-        created_by_device_id: deviceId,
-        event_type: eventType,
-        id: createUuid(),
-        idempotency_key: buildSemanticActionKey(userId ?? "", deviceId, previous.id, eventType, now),
-        item_id: previous.id,
-        new_value: newValue,
-        previous_value: pickPreviousValues(previous, newValue),
-        reason: null,
-        recurring_template_id: previous.recurring_template_id,
-        user_id: userId ?? "",
+  void database
+    .writeTransaction(async (tx) => {
+      await updateItemRow(tx, {
+        ...parsed.row,
+        client_updated_at: now,
+        updated_at: now,
+        updated_by_device_id: deviceId,
       });
-    }
-  }).catch((error: unknown) => {
-    const contractError =
-      error && typeof error === "object" && "code" in error
-        ? (error as ContractError)
-        : validationError({ title: "local_write_failed" });
-    void writeRejectedContext(database, mutation, contractError, now);
-  });
+      if (eventType) {
+        await insertOperationHistory(tx, {
+          created_at: now,
+          created_by_device_id: deviceId,
+          event_type: eventType,
+          id: createUuid(),
+          idempotency_key: mutation.idempotencyKey,
+          item_id: previous.id,
+          new_value: newValue,
+          previous_value: pickPreviousValues(previous, newValue),
+          reason: null,
+          recurring_template_id: previous.recurring_template_id,
+          user_id: userId ?? "",
+        });
+      }
+      await insertPendingContext(tx, mutation, now);
+    })
+    .catch((error: unknown) => {
+      const contractError =
+        error && typeof error === "object" && "code" in error
+          ? (error as ContractError)
+          : validationError({ title: "local_write_failed" });
+      void writeRejectedContext(database, mutation, contractError, now);
+    });
 
   return { ok: true, mutation };
 }
@@ -591,26 +677,111 @@ function buildCaptureRow(
 }
 
 function classifySyncedItem(
+  database: AbstractPowerSyncDatabase,
+  deviceId: string,
+  userId: string | null,
   item: LocalItemRow,
   input: ClassificationInput,
   today: DateOnly,
-): LocalItemRow {
+): MutationResult {
   if (input.targetType === "recurring_template") {
-    return {
-      ...item,
-      hidden_reason: "converted_to_recurring_template",
-    };
+    return convertItemToRecurringTemplate(database, deviceId, userId, item, today);
   }
 
-  return {
-    ...item,
-    item_type: input.targetType,
-    scheduled_date: input.targetType === "date_task" ? input.scheduledDate : null,
-    scheduled_time_zone_mode: input.targetType === "date_task" ? "floating" : null,
-    deadline_date: input.targetType === "deadline_task" ? input.deadlineDate : null,
-    deadline_time_zone_mode: input.targetType === "deadline_task" ? "date_only" : null,
-    review_date: input.targetType === "idea" ? today : null,
+  return writeItemUpdate(
+    database,
+    deviceId,
+    userId,
+    item,
+    {
+      ...item,
+      item_type: input.targetType,
+      scheduled_date: input.targetType === "date_task" ? input.scheduledDate : null,
+      scheduled_time_zone_mode: input.targetType === "date_task" ? "floating" : null,
+      deadline_date: input.targetType === "deadline_task" ? input.deadlineDate : null,
+      deadline_time_zone_mode: input.targetType === "deadline_task" ? "date_only" : null,
+      review_date: input.targetType === "idea" ? today : null,
+    },
+    "classify",
+  );
+}
+
+function convertItemToRecurringTemplate(
+  database: AbstractPowerSyncDatabase,
+  deviceId: string,
+  userId: string | null,
+  item: LocalItemRow,
+  today: DateOnly,
+): MutationResult {
+  if (!userId) {
+    const error = validationError({ user_id: "session_required" });
+    const mutation = buildRejectedMutation(userId, deviceId, "items", item.id, "classify");
+    void writeRejectedContext(database, mutation, error, new Date().toISOString());
+    return { ok: false, error };
+  }
+
+  const now = new Date().toISOString();
+  const templateId = createUuid();
+  const itemMutation = buildRejectedMutation(userId, deviceId, "items", item.id, "classify");
+  const templateMutation: LocalMutationContext = {
+    action: "classify",
+    clientActionId: itemMutation.clientActionId,
+    idempotencyKey: itemMutation.idempotencyKey,
+    localMutationId: createUuid(),
+    rowId: templateId,
+    table: "recurring_task_templates",
   };
+  const hiddenItem = normalizeItemRow({
+    ...item,
+    client_updated_at: now,
+    hidden_reason: "converted_to_recurring_template",
+    updated_at: now,
+    updated_by_device_id: deviceId,
+  });
+  const template = buildTemplateFromItem(item, {
+    deviceId,
+    now,
+    templateId,
+    today,
+    userId,
+  });
+
+  void database
+    .writeTransaction(async (tx) => {
+      await insertRecurringTemplate(tx, template);
+      await updateItemRow(tx, hiddenItem);
+      await insertOperationHistory(tx, {
+        created_at: now,
+        created_by_device_id: deviceId,
+        event_type: "converted_to_recurring_template",
+        id: createUuid(),
+        idempotency_key: itemMutation.idempotencyKey,
+        item_id: item.id,
+        new_value: {
+          hidden_reason: "converted_to_recurring_template",
+          recurring_template_id: templateId,
+        },
+        previous_value: {
+          hidden_reason: item.hidden_reason,
+          recurring_template_id: item.recurring_template_id,
+        },
+        reason: null,
+        recurring_template_id: templateId,
+        user_id: userId,
+      });
+      await insertPendingContext(tx, itemMutation, now);
+      await insertPendingContext(tx, templateMutation, now);
+    })
+    .catch((error: unknown) => {
+      const contractError =
+        error && typeof error === "object" && "code" in error
+          ? (error as ContractError)
+          : validationError({ title: "local_write_failed" });
+      void writeRejectedContext(database, itemMutation, contractError, now);
+      void writeRejectedContext(database, templateMutation, contractError, now);
+    });
+
+  return { ok: true, mutation: itemMutation };
 }
 
 function postponeSyncedItem(item: LocalItemRow, input: PostponeInput): LocalItemRow {
@@ -637,14 +808,12 @@ function postponeSyncedItem(item: LocalItemRow, input: PostponeInput): LocalItem
   };
 }
 
-function getSyncedSemanticActionPatch(action: ItemActionId):
-  | {
-      action: RejectedWriteContext["action"];
-      eventType: MinimalOperationHistoryRow["event_type"];
-      newValue: (now: string) => JsonObject;
-      patch: (now: string) => Partial<LocalItemRow>;
-    }
-  | null {
+function getSyncedSemanticActionPatch(action: ItemActionId): {
+  action: RejectedWriteContext["action"];
+  eventType: MinimalOperationHistoryRow["event_type"];
+  newValue: (now: string) => JsonObject;
+  patch: (now: string) => Partial<LocalItemRow>;
+} | null {
   switch (action) {
     case "complete":
       return {
@@ -848,30 +1017,165 @@ async function insertOperationHistory(
   );
 }
 
+async function insertRecurringTemplate(
+  tx: Pick<AbstractPowerSyncDatabase, "execute">,
+  row: RecurringTaskTemplateDto,
+): Promise<void> {
+  await tx.execute(
+    `INSERT INTO recurring_task_templates (
+      id, user_id, archived_at, client_updated_at, created_at, created_by_device_id, deleted_at,
+      hidden_reason, revision, server_updated_at, updated_at, updated_by_device_id, area_id,
+      completed_count, end_after_count, end_date, end_type, frequency, generated_task_defaults,
+      interval, next_sequence, note, recurrence_basis, reminder_rule, scheduled_time, start_date,
+      status, title, weekdays
+    ) VALUES (${Array.from({ length: 29 }, () => "?").join(", ")})`,
+    [
+      row.id,
+      row.user_id,
+      row.archived_at,
+      row.client_updated_at,
+      row.created_at,
+      row.created_by_device_id,
+      row.deleted_at,
+      row.hidden_reason,
+      row.revision,
+      row.server_updated_at,
+      row.updated_at,
+      row.updated_by_device_id,
+      row.area_id,
+      row.completed_count,
+      row.end_after_count,
+      row.end_date,
+      row.end_type,
+      row.frequency,
+      serializeJson(row.generated_task_defaults),
+      row.interval,
+      row.next_sequence,
+      row.note,
+      row.recurrence_basis,
+      serializeJson(row.reminder_rule),
+      row.scheduled_time,
+      row.start_date,
+      row.status,
+      row.title,
+      JSON.stringify(row.weekdays),
+    ],
+  );
+}
+
+function buildTemplateFromItem(
+  item: LocalItemRow,
+  context: {
+    deviceId: string;
+    now: string;
+    templateId: string;
+    today: DateOnly;
+    userId: string;
+  },
+): RecurringTaskTemplateDto {
+  const recurrenceBasis =
+    item.item_type === "deadline_task"
+      ? "deadline_date"
+      : item.item_type === "date_task"
+        ? "scheduled_date"
+        : "completion_date";
+  const startDate =
+    item.scheduled_date ??
+    item.deadline_date ??
+    item.review_date ??
+    item.planned_work_date ??
+    context.today;
+
+  return {
+    id: context.templateId,
+    user_id: context.userId,
+    archived_at: null,
+    client_updated_at: context.now,
+    created_at: context.now,
+    created_by_device_id: context.deviceId,
+    deleted_at: null,
+    hidden_reason: null,
+    revision: 0,
+    server_updated_at: context.now,
+    updated_at: context.now,
+    updated_by_device_id: context.deviceId,
+    area_id: item.area_id,
+    completed_count: 0,
+    end_after_count: null,
+    end_date: null,
+    end_type: "never",
+    frequency: "weekly",
+    generated_task_defaults: buildGeneratedTaskDefaults(item),
+    interval: 1,
+    next_sequence: 1,
+    note: item.note,
+    recurrence_basis: recurrenceBasis,
+    reminder_rule: {},
+    scheduled_time: item.scheduled_time,
+    start_date: startDate,
+    status: "active",
+    title: item.title,
+    weekdays: [],
+  };
+}
+
+function buildGeneratedTaskDefaults(item: LocalItemRow): JsonObject {
+  return {
+    estimated_effort: item.estimated_effort,
+    importance: item.importance,
+    item_type: item.item_type === "inbox" ? "date_task" : item.item_type,
+    note: item.note,
+  };
+}
+
+async function insertPendingContext(
+  tx: Pick<AbstractPowerSyncDatabase, "execute">,
+  mutation: LocalMutationContext,
+  now: string,
+): Promise<void> {
+  await tx.execute(
+    `INSERT OR REPLACE INTO pending_write_context (
+      id, action, client_action_id, created_at, idempotency_key, row_id, table_name
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      mutation.localMutationId,
+      mutation.action,
+      mutation.clientActionId,
+      now,
+      mutation.idempotencyKey,
+      mutation.rowId,
+      mutation.table,
+    ],
+  );
+}
+
 async function writeRejectedContext(
   database: AbstractPowerSyncDatabase,
   mutation: LocalMutationContext,
   error: ContractError,
   now: string,
 ): Promise<void> {
-  await database.execute(
-    `INSERT OR REPLACE INTO rejected_write_context (
-      id, action, client_action_id, created_at, error_code, field_errors, idempotency_key,
-      retryable, row_id, table_name
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      mutation.localMutationId,
-      mutation.action,
-      mutation.clientActionId,
-      now,
-      error.code,
-      serializeJson(error.fields),
-      mutation.idempotencyKey,
-      error.retryable ? 1 : 0,
-      mutation.rowId,
-      mutation.table,
-    ],
-  );
+  await database.writeTransaction(async (tx) => {
+    await tx.execute(
+      `INSERT OR REPLACE INTO rejected_write_context (
+        id, action, client_action_id, created_at, error_code, field_errors, idempotency_key,
+        retryable, row_id, table_name
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        mutation.localMutationId,
+        mutation.action,
+        mutation.clientActionId,
+        now,
+        error.code,
+        serializeJson(error.fields),
+        mutation.idempotencyKey,
+        error.retryable ? 1 : 0,
+        mutation.rowId,
+        mutation.table,
+      ],
+    );
+    await tx.execute("DELETE FROM pending_write_context WHERE id = ?", [mutation.localMutationId]);
+  });
 }
 
 function buildRejectedMutation(
@@ -890,16 +1194,6 @@ function buildRejectedMutation(
     rowId,
     table,
   };
-}
-
-function buildSemanticActionKey(
-  userId: string,
-  deviceId: string,
-  itemId: string,
-  eventType: MinimalOperationHistoryRow["event_type"],
-  updatedAt: string,
-): string {
-  return buildOrdinaryActionKey(userId, deviceId, `semantic:${itemId}:${eventType}:${updatedAt}`);
 }
 
 function normalizeSyncedItem(row: SyncedItemRow): LocalItemRow | null {
@@ -939,6 +1233,17 @@ function normalizeRejectedWrite(row: RejectedWriteRow): RejectedWriteContext {
     idempotencyKey: row.idempotency_key,
     localMutationId: row.id,
     retryable: Boolean(row.retryable),
+    rowId: row.row_id,
+    table: row.table_name,
+  };
+}
+
+function normalizePendingWrite(row: PendingWriteRow): LocalMutationContext {
+  return {
+    action: row.action,
+    clientActionId: row.client_action_id,
+    idempotencyKey: row.idempotency_key,
+    localMutationId: row.id,
     rowId: row.row_id,
     table: row.table_name,
   };
@@ -988,7 +1293,9 @@ function parseStringArray(value: string | string[] | null | undefined): string[]
 
   try {
     const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string")
+      : [];
   } catch {
     return [];
   }
@@ -1030,3 +1337,5 @@ type WriteContext = {
   now: string;
   userId: string;
 };
+
+type WriteTransaction = Pick<AbstractPowerSyncDatabase, "execute">;
