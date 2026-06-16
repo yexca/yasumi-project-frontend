@@ -397,28 +397,51 @@ function buildSyncedMutations({
       return execute("user_settings", userId ?? "settings", "settings_update", (context) =>
         database.writeTransaction(async (tx) => {
           await tx.execute(
+            `UPDATE user_settings SET
+              language = ?,
+              locale = ?,
+              week_start_day = ?,
+              time_zone = ?,
+              date_display_format = ?,
+              time_display_format = ?,
+              default_time_zone_mode = ?,
+              today_primary_lookahead_days = ?,
+              deadline_awareness_days = ?,
+              weather_city = ?,
+              updated_at = ?,
+              client_updated_at = ?,
+              updated_by_device_id = ?,
+              revision = ?
+            WHERE id = ?`,
+            [
+              candidate.language,
+              candidate.locale,
+              candidate.week_start_day,
+              candidate.time_zone,
+              candidate.date_display_format,
+              candidate.time_display_format,
+              candidate.default_time_zone_mode,
+              candidate.today_primary_lookahead_days,
+              candidate.deadline_awareness_days,
+              candidate.weather_city,
+              context.now,
+              context.now,
+              context.deviceId,
+              0,
+              context.userId,
+            ],
+          );
+          await tx.execute(
             `INSERT INTO user_settings (
-              user_id, language, locale, week_start_day, time_zone, date_display_format,
+              id, user_id, language, locale, week_start_day, time_zone, date_display_format,
               time_display_format, default_time_zone_mode, today_primary_lookahead_days,
               deadline_awareness_days, weather_city, created_at, updated_at, client_updated_at,
               server_updated_at, created_by_device_id, updated_by_device_id, revision
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET
-              language = excluded.language,
-              locale = excluded.locale,
-              week_start_day = excluded.week_start_day,
-              time_zone = excluded.time_zone,
-              date_display_format = excluded.date_display_format,
-              time_display_format = excluded.time_display_format,
-              default_time_zone_mode = excluded.default_time_zone_mode,
-              today_primary_lookahead_days = excluded.today_primary_lookahead_days,
-              deadline_awareness_days = excluded.deadline_awareness_days,
-              weather_city = excluded.weather_city,
-              updated_at = excluded.updated_at,
-              client_updated_at = excluded.client_updated_at,
-              updated_by_device_id = excluded.updated_by_device_id,
-              revision = excluded.revision`,
+            )
+            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            WHERE NOT EXISTS (SELECT 1 FROM user_settings WHERE id = ?)`,
             [
+              context.userId,
               context.userId,
               candidate.language,
               candidate.locale,
@@ -437,6 +460,7 @@ function buildSyncedMutations({
               context.deviceId,
               context.deviceId,
               0,
+              context.userId,
             ],
           );
         }),
@@ -486,7 +510,7 @@ function writeItemUpdate(
         created_by_device_id: deviceId,
         event_type: eventType,
         id: createUuid(),
-        idempotency_key: mutation.idempotencyKey,
+        idempotency_key: buildSemanticActionKey(userId ?? "", deviceId, previous.id, eventType, now),
         item_id: previous.id,
         new_value: newValue,
         previous_value: pickPreviousValues(previous, newValue),
@@ -866,6 +890,16 @@ function buildRejectedMutation(
     rowId,
     table,
   };
+}
+
+function buildSemanticActionKey(
+  userId: string,
+  deviceId: string,
+  itemId: string,
+  eventType: MinimalOperationHistoryRow["event_type"],
+  updatedAt: string,
+): string {
+  return buildOrdinaryActionKey(userId, deviceId, `semantic:${itemId}:${eventType}:${updatedAt}`);
 }
 
 function normalizeSyncedItem(row: SyncedItemRow): LocalItemRow | null {

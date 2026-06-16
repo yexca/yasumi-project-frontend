@@ -116,7 +116,7 @@ export function PageFrame({
           <ItemDetailPane
             areas={areas}
             item={selectedItem}
-            key={selectedItem.id}
+            key={`${selectedItem.id}:${selectedItem.note ?? ""}`}
             onClose={() => setSelectedItemId(null)}
           />
         ) : null}
@@ -125,6 +125,7 @@ export function PageFrame({
         <MobileItemDetailSheet
           areas={areas}
           item={selectedItem}
+          key={`${selectedItem.id}:${selectedItem.note ?? ""}`}
           onClose={() => setSelectedItemId(null)}
         />
       ) : null}
@@ -277,6 +278,7 @@ function ItemDetailPane({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const areaName = areas.find((area) => area.id === item.area_id)?.name ?? t("area.picker.none");
   const syncState = getItemSyncState(item.id);
+
   const content = useItemDetailContent({
     areaName,
     editItem,
@@ -319,6 +321,7 @@ function MobileItemDetailSheet({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const areaName = areas.find((area) => area.id === item.area_id)?.name ?? t("area.picker.none");
   const syncState = getItemSyncState(item.id);
+
   const content = useItemDetailContent({
     areaName,
     editItem,
@@ -379,6 +382,10 @@ function useItemDetailContent({
   const { t } = useTranslation();
   const lastSavedNote = useRef(item.note ?? "");
   const savedTimer = useRef<number | null>(null);
+
+  useEffect(() => {
+    lastSavedNote.current = item.note ?? "";
+  }, [item.id, item.note]);
 
   const persistNote = useCallback(
     (nextValue = note) => {

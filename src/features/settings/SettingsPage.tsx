@@ -142,18 +142,11 @@ export function SettingsPage() {
               <option value="Europe/London">{t("settings.timeZone.london")}</option>
               <option value="America/New_York">{t("settings.timeZone.newYork")}</option>
             </Select>
-            <TextInput
+            <WeatherCityInput
+              key={settings.weather_city}
               label={t("settings.weatherCity.label")}
-              maxLength={120}
-              onBlur={(event) => {
-                const nextWeatherCity = event.target.value.trim();
-                if (nextWeatherCity) {
-                  updateSettings({ weather_city: nextWeatherCity });
-                } else {
-                  event.currentTarget.value = settings.weather_city;
-                }
-              }}
-              defaultValue={settings.weather_city}
+              onUpdate={(weather_city) => updateSettings({ weather_city })}
+              value={settings.weather_city}
             />
             <TextInput
               label={t("settings.primaryLookahead.label")}
@@ -264,6 +257,45 @@ export function SettingsPage() {
 }
 
 type TranslationFn = (key: string) => string;
+
+function WeatherCityInput({
+  label,
+  onUpdate,
+  value,
+}: {
+  label: string;
+  onUpdate: (value: string) => void;
+  value: string;
+}) {
+  const [draft, setDraft] = useState(value);
+
+  function commit(valueToCommit: string) {
+    const nextWeatherCity = valueToCommit.trim();
+    if (nextWeatherCity) {
+      onUpdate(nextWeatherCity);
+      setDraft(nextWeatherCity);
+      return;
+    }
+
+    setDraft(value);
+  }
+
+  return (
+    <TextInput
+      label={label}
+      maxLength={120}
+      onBlur={(event) => commit(event.target.value)}
+      onChange={(event) => setDraft(event.target.value)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          commit(event.currentTarget.value);
+          event.currentTarget.blur();
+        }
+      }}
+      value={draft}
+    />
+  );
+}
 
 function ProfileForm({
   initialDisplayName,

@@ -11,7 +11,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router";
 
 import { useMobileNavSlots } from "@/app/navigation/mobileNavigation";
@@ -20,6 +20,7 @@ import { IconButton } from "@/components/primitives/Button";
 import { Menu, MenuItem } from "@/components/primitives/Menu";
 import { getDateOnlyInTimeZone } from "@/domain/time/dateOnly";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { QuickAddDialog } from "@/features/items/ItemDialogs";
 import { usePlanningData, usePlanningMutations } from "@/features/planning/PlanningDataProvider";
 import { useSyncStatus } from "@/features/sync/useSyncStatus";
 import { useTranslation } from "@/i18n/I18nProvider";
@@ -29,12 +30,6 @@ import { useTheme } from "@/styles/ThemeProvider";
 import styles from "./AppShell.module.css";
 import { useShellClock } from "./useShellClock";
 import { useWeatherSummary } from "./useWeatherSummary";
-
-const QuickAddDialog = lazy(() =>
-  import("@/features/items/ItemDialogs").then((module) => ({
-    default: module.QuickAddDialog,
-  })),
-);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
@@ -249,15 +244,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       {quickAddOpen ? (
-        <Suspense fallback={null}>
-          <QuickAddDialog
-            defaultCapture={
-              isTodayRoute ? { defaultItemType: "date_task", defaultScheduledDate: today } : undefined
-            }
-            onOpenChange={setQuickAddOpen}
-            open={quickAddOpen}
-          />
-        </Suspense>
+        <QuickAddDialog
+          defaultCapture={
+            isTodayRoute ? { defaultItemType: "date_task", defaultScheduledDate: today } : undefined
+          }
+          onOpenChange={setQuickAddOpen}
+          open={quickAddOpen}
+        />
       ) : null}
     </div>
   );

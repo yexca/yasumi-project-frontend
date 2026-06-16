@@ -433,7 +433,7 @@ const SyncedPlanningStoreContext = createContext<SyncedStore | null>(null);
 export function PlanningDataProvider({ children }: PropsWithChildren) {
   const runtime = useOptionalPowerSyncRuntime();
 
-  if (runtime?.hasQueryRuntime === true) {
+  if (runtime?.usesSyncedStore === true) {
     return <SyncedPlanningDataProvider>{children}</SyncedPlanningDataProvider>;
   }
 

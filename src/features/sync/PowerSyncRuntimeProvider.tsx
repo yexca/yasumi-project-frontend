@@ -22,9 +22,9 @@ export type PowerSyncRuntimeContextValue = {
   clientVersion: string;
   database: AbstractPowerSyncDatabase;
   deviceId: string;
-  hasQueryRuntime: boolean;
   lifecycleState: PowerSyncLifecycleState;
   lifecycleError: string | null;
+  usesSyncedStore: boolean;
 };
 
 const PowerSyncRuntimeContext = createContext<PowerSyncRuntimeContextValue | null>(null);
@@ -119,9 +119,9 @@ export function PowerSyncRuntimeProvider({ children }: PropsWithChildren) {
       clientVersion,
       database,
       deviceId,
-      hasQueryRuntime: typeof (database as { customQuery?: unknown }).customQuery === "function",
       lifecycleError,
       lifecycleState,
+      usesSyncedStore: shouldUseSyncedStore(database),
     }),
     [clientVersion, database, deviceId, lifecycleError, lifecycleState],
   );
@@ -153,4 +153,12 @@ export function useRuntimePowerSyncStatus(): SyncStatus {
 
 function buildConnectionKey(accessToken: string, clientVersion: string, deviceId: string): string {
   return `${accessToken}:${clientVersion}:${deviceId}`;
+}
+
+function shouldUseSyncedStore(database: AbstractPowerSyncDatabase): boolean {
+  if (import.meta.env.MODE !== "test") {
+    return true;
+  }
+
+  return typeof (database as { customQuery?: unknown }).customQuery === "function";
 }
