@@ -24,11 +24,17 @@ export function AuthPage() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (mode === "register" && password !== confirmPassword) {
+      setErrorKey("auth.error.passwordMismatch");
+      return;
+    }
+
     setSubmitting(true);
     setErrorKey(null);
 
@@ -140,6 +146,7 @@ export function AuthPage() {
             </button>
           </div>
           <form className={styles.form} onSubmit={(event) => void submit(event)}>
+            {mode === "register" ? <p className={styles.requiredNote}>{t("auth.requiredNote")}</p> : null}
             {mode === "login" ? (
               <TextInput
                 autoComplete="username"
@@ -182,6 +189,23 @@ export function AuthPage() {
               type="password"
               value={password}
             />
+            {mode === "register" ? (
+              <TextInput
+                autoComplete="new-password"
+                error={errorKey === "auth.error.passwordMismatch" ? t(errorKey) : undefined}
+                label={t("auth.confirmPassword.label")}
+                minLength={8}
+                onChange={(event) => {
+                  setConfirmPassword(event.target.value);
+                  if (errorKey === "auth.error.passwordMismatch") {
+                    setErrorKey(null);
+                  }
+                }}
+                required
+                type="password"
+                value={confirmPassword}
+              />
+            ) : null}
             {errorKey ? <p className={styles.error}>{t(errorKey)}</p> : null}
             <Button
               disabled={submitting}

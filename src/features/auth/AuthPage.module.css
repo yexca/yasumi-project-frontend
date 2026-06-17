@@ -215,6 +215,12 @@
   gap: var(--space-4);
 }
 
+.requiredNote {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-metadata);
+}
+
 .error {
   margin: 0;
   padding: var(--space-3);

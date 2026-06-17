@@ -5,9 +5,17 @@
 }
 
 .label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--color-text-secondary);
   font-size: var(--font-size-metadata);
   font-weight: 680;
+}
+
+.requiredMark {
+  color: var(--color-danger-default);
+  font-weight: 760;
 }
 
 .input,
