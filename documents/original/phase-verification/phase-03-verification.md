@@ -35,7 +35,7 @@ Implemented and verified the local data and contract-domain foundation against
 
 ## Environment Notes
 
-- Shared fixtures were consumed from the adjacent development documents workspace.
+- Shared fixtures were consumed from an adjacent development-documents workspace at the time this record was written.
 
 ## Results
 

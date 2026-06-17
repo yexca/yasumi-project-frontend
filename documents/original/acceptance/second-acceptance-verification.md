@@ -22,4 +22,4 @@ Date: 2026-06-14
 
 ## Manual Docker Check
 
-Use the backend root `docker-compose.example.yml` with the frontend profile when both repositories are adjacent. Confirm profile and weather API calls through the running API container, then repeat the manual checklist in `../dev_documents/manual_acceptance_guidance_2nd/04-acceptance-checklist.md`.
+Use the backend root `docker-compose.example.yml` with the frontend profile when both repositories are adjacent. Confirm profile and weather API calls through the running API container, then repeat the manual checklist that existed in the external `dev_documents` workspace at the time of this verification.

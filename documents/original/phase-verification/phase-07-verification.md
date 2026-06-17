@@ -16,11 +16,11 @@ Implemented and verified testing, hardening, and release readiness work against
 - Added Playwright coverage for all MVP navigation routes, Quick Add local capture, complete/reopen, offline pending behavior, language fallback, theme switching, and background-off state.
 - Hardened theme testability with root data attributes for resolved theme mode and background preference.
 - Switched Playwright's dev server command to use `env/npm.cmd` on Windows so tests use the project-pinned runtime.
-- Added `documents/release-checklist.md` with automated gates, MVP guardrails, known limitations, and release decision notes.
+- Added the release checklist document, now archived at `documents/original/release/release-checklist.md`, with automated gates, MVP guardrails, known limitations, and release decision notes.
 
 ## Acceptance Notes
 
-- Contract fixture tests now consume `../dev_documents/contracts/fixtures/` directly.
+- Contract fixture tests consumed `../dev_documents/contracts/fixtures/` directly at the time this record was written.
 - Quick Add parser fixture baseline passes for English, Simplified Chinese, Japanese, ambiguous dates, deadline floating time, short-date next-year behavior, and the "done date" non-completion guardrail.
 - Offline UI remains navigable and shows pending local state after an item action.
 - Unsupported browser locale falls back to English.
