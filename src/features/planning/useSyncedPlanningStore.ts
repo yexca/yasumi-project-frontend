@@ -26,6 +26,7 @@ import type { ItemActionId } from "@/features/items/itemPresentation";
 import { parseQuickAdd } from "@/features/quick-add/parser";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { usePowerSyncRuntime } from "@/features/sync/PowerSyncRuntimeProvider";
+import { resolveLocalLanguagePreference } from "@/i18n/localLanguagePreference";
 
 import type {
   ClassificationInput,
@@ -1254,11 +1255,9 @@ function normalizeSettings(row: SyncedSettingsRow | undefined): UserSettingsDefa
     return row;
   }
 
-  const browserLanguage =
-    typeof navigator !== "undefined" ? (navigator.languages?.[0] ?? navigator.language) : "en";
   const deviceTimeZone = getDefaultDeviceTimeZone();
   return buildDefaultUserSettings(
-    detectSupportedLanguage(browserLanguage),
+    resolveLocalLanguagePreference(),
     isValidTimeZone(deviceTimeZone) ? deviceTimeZone : "UTC",
   );
 }

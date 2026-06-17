@@ -91,6 +91,7 @@ export type ApiErrorDto = z.infer<typeof apiErrorDtoSchema>;
 
 export const syncTokenResponseDtoSchema = z.object({
   token: z.string().min(1),
+  endpoint: z.string().min(1).optional().or(z.literal("")).optional(),
   expires_at: instantSchema,
   stream_scope: z.object({
     user_id: z.string().min(1),

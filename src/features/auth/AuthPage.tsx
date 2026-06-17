@@ -14,8 +14,8 @@ import styles from "./AuthPage.module.css";
 type AuthMode = "login" | "register";
 
 export function AuthPage() {
-  const { t } = useTranslation();
-  const { login, register } = useAuth();
+  const { language, setLanguage, t } = useTranslation();
+  const { login, register, session } = useAuth();
   const { settings } = usePlanningData();
   const { updateSettings } = usePlanningMutations();
   const [mode, setMode] = useState<AuthMode>("login");
@@ -102,9 +102,14 @@ export function AuthPage() {
                 aria-label={t("settings.language.label")}
                 onChange={(event) => {
                   const language = event.target.value as typeof settings.language;
+                  if (!session) {
+                    setLanguage(language);
+                    return;
+                  }
+
                   updateSettings({ language, locale: getDefaultLocale(language) });
                 }}
-                value={settings.language}
+                value={session ? settings.language : language}
               >
                 <option value="en">{t("settings.language.en")}</option>
                 <option value="zh-Hans">{t("settings.language.zhHans")}</option>

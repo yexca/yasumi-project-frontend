@@ -33,7 +33,6 @@ import { normalizeItemRow, safeNormalizeItemRow } from "@/domain/items/schemas";
 import type { UserSettingsDefaults } from "@/domain/settings/defaults";
 import {
   buildDefaultUserSettings,
-  detectSupportedLanguage,
   getDefaultDeviceTimeZone,
   isUserSettingsDefaults,
   isValidTimeZone,
@@ -43,6 +42,7 @@ import { validateStatusTransition } from "@/domain/transitions/status";
 import type { ItemActionId } from "@/features/items/itemPresentation";
 import { parseQuickAdd } from "@/features/quick-add/parser";
 import { useOptionalPowerSyncRuntime } from "@/features/sync/PowerSyncRuntimeProvider";
+import { resolveLocalLanguagePreference } from "@/i18n/localLanguagePreference";
 import { useSyncedPlanningStore, type SyncedStore } from "./useSyncedPlanningStore";
 
 export type PlanningData = {
@@ -1218,9 +1218,6 @@ function getInitialUserSettings(): UserSettingsDefaults {
     return stored;
   }
 
-  const browserLanguage =
-    typeof navigator !== "undefined" ? (navigator.languages?.[0] ?? navigator.language) : "en";
-
   const deviceTimeZone = getDefaultDeviceTimeZone();
   const supportedTimeZone = [
     "Asia/Shanghai",
@@ -1231,7 +1228,7 @@ function getInitialUserSettings(): UserSettingsDefaults {
     ? deviceTimeZone
     : "Asia/Tokyo";
 
-  return buildDefaultUserSettings(detectSupportedLanguage(browserLanguage), supportedTimeZone);
+  return buildDefaultUserSettings(resolveLocalLanguagePreference(), supportedTimeZone);
 }
 
 function readStoredUserSettings(): UserSettingsDefaults | null {

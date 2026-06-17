@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { AuthProvider } from "@/features/auth/AuthProvider";
+import { PowerSyncRuntimeProvider } from "@/features/sync/PowerSyncRuntimeProvider";
 import { PlanningDataProvider } from "@/features/planning/usePlanningData";
 import { I18nProvider } from "@/i18n/I18nProvider";
 import { seedAuthSession } from "@/test/setup";
@@ -12,15 +13,17 @@ import { SettingsPage } from "./SettingsPage";
 
 function renderSettings() {
   render(
-    <PlanningDataProvider>
-      <I18nProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <SettingsPage />
-          </AuthProvider>
-        </ThemeProvider>
-      </I18nProvider>
-    </PlanningDataProvider>,
+    <AuthProvider>
+      <PowerSyncRuntimeProvider>
+        <PlanningDataProvider>
+          <I18nProvider>
+            <ThemeProvider>
+              <SettingsPage />
+            </ThemeProvider>
+          </I18nProvider>
+        </PlanningDataProvider>
+      </PowerSyncRuntimeProvider>
+    </AuthProvider>,
   );
 }
 

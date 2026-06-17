@@ -26,7 +26,7 @@ export async function requestSyncToken({ accessToken, clientVersion, deviceId }:
   });
 
   return {
-    endpoint: getPowerSyncEndpoint(),
+    endpoint: response.endpoint?.trim() || getPowerSyncEndpoint(),
     expiresAt: new Date(response.expires_at),
     streamScope: response.stream_scope,
     token: response.token,
