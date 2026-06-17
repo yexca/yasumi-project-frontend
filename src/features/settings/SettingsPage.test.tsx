@@ -1,7 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
+import { MemoryRouter } from "react-router";
 
+import { ROUTE_PATHS } from "@/app/router/routes";
+import { AppShell } from "@/components/layout/AppShell";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { PowerSyncRuntimeProvider } from "@/features/sync/PowerSyncRuntimeProvider";
 import { PlanningDataProvider } from "@/features/planning/usePlanningData";
@@ -13,17 +16,39 @@ import { SettingsPage } from "./SettingsPage";
 
 function renderSettings() {
   render(
-    <AuthProvider>
-      <PowerSyncRuntimeProvider>
-        <PlanningDataProvider>
-          <I18nProvider>
-            <ThemeProvider>
-              <SettingsPage />
-            </ThemeProvider>
-          </I18nProvider>
-        </PlanningDataProvider>
-      </PowerSyncRuntimeProvider>
-    </AuthProvider>,
+    <MemoryRouter initialEntries={[ROUTE_PATHS.settings]}>
+      <AuthProvider>
+        <PowerSyncRuntimeProvider>
+          <PlanningDataProvider>
+            <I18nProvider>
+              <ThemeProvider>
+                <SettingsPage />
+              </ThemeProvider>
+            </I18nProvider>
+          </PlanningDataProvider>
+        </PowerSyncRuntimeProvider>
+      </AuthProvider>
+    </MemoryRouter>,
+  );
+}
+
+function renderSettingsWithShell() {
+  render(
+    <MemoryRouter initialEntries={[ROUTE_PATHS.settings]}>
+      <AuthProvider>
+        <PowerSyncRuntimeProvider>
+          <PlanningDataProvider>
+            <I18nProvider>
+              <ThemeProvider>
+                <AppShell>
+                  <SettingsPage />
+                </AppShell>
+              </ThemeProvider>
+            </I18nProvider>
+          </PlanningDataProvider>
+        </PowerSyncRuntimeProvider>
+      </AuthProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -115,5 +140,35 @@ describe("SettingsPage", () => {
     expect(firstShortcut).toHaveValue("/deadlines");
     expect(screen.getByLabelText("Shortcut 2")).toHaveValue("/inbox");
     expect(screen.getByLabelText("Shortcut 3")).toHaveValue("/upcoming");
+  });
+
+  it("updates the app shell mobile bottom bar immediately after changing a shortcut", async () => {
+    const user = userEvent.setup();
+
+    renderSettingsWithShell();
+
+    const mobileNav = screen.getByRole("navigation", { name: "Mobile navigation" });
+    expect(within(mobileNav).getByText("Today")).toBeInTheDocument();
+    expect(within(mobileNav).queryByText("Deadlines")).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Shortcut 1"), ROUTE_PATHS.deadlines);
+
+    await waitFor(() => {
+      expect(within(mobileNav).getByText("Deadlines")).toBeInTheDocument();
+    });
+    expect(within(mobileNav).queryByText("Today")).not.toBeInTheDocument();
+  });
+
+  it("keeps mobile bottom bar shortcut controls usable, including reset", async () => {
+    const user = userEvent.setup();
+
+    renderSettings();
+
+    await user.selectOptions(screen.getByLabelText("Shortcut 1"), ROUTE_PATHS.deadlines);
+    await user.click(screen.getByRole("button", { name: "Reset shortcuts" }));
+
+    expect(screen.getByLabelText("Shortcut 1")).toHaveValue(ROUTE_PATHS.today);
+    expect(screen.getByLabelText("Shortcut 2")).toHaveValue(ROUTE_PATHS.inbox);
+    expect(screen.getByLabelText("Shortcut 3")).toHaveValue(ROUTE_PATHS.upcoming);
   });
 });

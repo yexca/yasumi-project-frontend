@@ -107,8 +107,15 @@
 
 .mobileNavControls {
   display: grid;
-  min-width: min(100%, 340px);
+  min-width: min(100%, 620px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
+  align-items: end;
+}
+
+.mobileNavControls > button {
+  justify-self: end;
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 640px) {
@@ -133,5 +140,10 @@
 
   .mobileNavControls {
     min-width: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .mobileNavControls > button {
+    justify-self: start;
   }
 }
