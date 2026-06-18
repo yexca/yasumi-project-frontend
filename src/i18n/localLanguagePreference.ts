@@ -2,6 +2,7 @@ import { LANGUAGE_CODES, type LanguageCode } from "@/domain/constants/shared";
 import { detectSupportedLanguage } from "@/domain/settings/defaults";
 
 const LOCAL_LANGUAGE_PREFERENCE_KEY = "yasumi:pre-auth-language";
+const localLanguagePreferenceListeners = new Set<() => void>();
 
 export function readLocalLanguagePreference(): LanguageCode | null {
   if (typeof localStorage === "undefined") {
@@ -18,7 +19,6 @@ export function readLocalLanguagePreference(): LanguageCode | null {
     return stored as LanguageCode;
   }
 
-  localStorage.removeItem(LOCAL_LANGUAGE_PREFERENCE_KEY);
   return null;
 }
 
@@ -32,6 +32,30 @@ export function persistLocalLanguagePreference(language: LanguageCode): void {
   }
 
   localStorage.setItem(LOCAL_LANGUAGE_PREFERENCE_KEY, language);
+  emitLocalLanguagePreferenceChange();
+}
+
+export function subscribeLocalLanguagePreference(listener: () => void): () => void {
+  localLanguagePreferenceListeners.add(listener);
+
+  if (typeof window === "undefined") {
+    return () => {
+      localLanguagePreferenceListeners.delete(listener);
+    };
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === LOCAL_LANGUAGE_PREFERENCE_KEY) {
+      listener();
+    }
+  };
+
+  window.addEventListener("storage", handleStorage);
+
+  return () => {
+    localLanguagePreferenceListeners.delete(listener);
+    window.removeEventListener("storage", handleStorage);
+  };
 }
 
 function detectBrowserLanguage(): LanguageCode {
@@ -39,4 +63,10 @@ function detectBrowserLanguage(): LanguageCode {
     typeof navigator !== "undefined" ? (navigator.languages?.[0] ?? navigator.language) : "en";
 
   return detectSupportedLanguage(browserLanguage);
+}
+
+function emitLocalLanguagePreferenceChange(): void {
+  for (const listener of localLanguagePreferenceListeners) {
+    listener();
+  }
 }

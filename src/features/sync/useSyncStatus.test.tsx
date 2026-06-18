@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { useSyncStatus } from "./useSyncStatus";
 
 const mocks = vi.hoisted(() => ({
-  authStatus: "signed_in" as "signed_in" | "signed_out" | "offline" | "blocked",
+  authStatus: "signed_in",
   powerSyncStatus: {
     connected: true,
     connecting: false,
@@ -19,14 +19,7 @@ const mocks = vi.hoisted(() => ({
   },
   runtime: {
     database: {},
-    lifecycleState: "connected" as
-      | "signed_out"
-      | "auth_blocked"
-      | "idle"
-      | "connecting"
-      | "connected"
-      | "disconnected"
-      | "error",
+    lifecycleState: "connected",
   },
   syncState: {
     pendingCount: 0,

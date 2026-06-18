@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useSyncUiState } from "@/features/planning/PlanningDataProvider";
@@ -164,32 +164,92 @@ function useUploadQueueCount(): number | null {
 }
 
 function useStableSyncStatus(status: ShellSyncStatus): ShellSyncStatus {
-  const [stableStatus, setStableStatus] = useState(status);
+  const [store] = useState(() => createStableSyncStatusStore(status));
+  const stableStatus = useSyncExternalStore(
+    (listener) => store.subscribe(listener),
+    () => store.getSnapshot(),
+    () => store.getSnapshot(),
+  );
 
   useEffect(() => {
-    const shouldHold =
-      stableStatus.mode === "uploading" &&
-      status.mode === "synced" &&
-      stableStatus.count === 0 &&
-      status.count === 0;
+    store.push(status);
+  }, [status, store]);
 
-    if (!shouldHold) {
-      if (!isSameShellSyncStatus(stableStatus, status)) {
-        setStableStatus(status);
-      }
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      setStableStatus(status);
-    }, 2_000);
-
+  useEffect(() => {
     return () => {
-      window.clearTimeout(timer);
+      store.dispose();
     };
-  }, [stableStatus.count, stableStatus.mode, status]);
+  }, [store]);
 
   return stableStatus;
+}
+
+function createStableSyncStatusStore(initialStatus: ShellSyncStatus) {
+  let snapshot = initialStatus;
+  let pendingStatus: ShellSyncStatus | null = null;
+  let timer: number | null = null;
+  const listeners = new Set<() => void>();
+
+  const clearHold = () => {
+    if (timer !== null) {
+      window.clearTimeout(timer);
+      timer = null;
+    }
+
+    pendingStatus = null;
+  };
+
+  const emit = () => {
+    for (const listener of listeners) {
+      listener();
+    }
+  };
+
+  return {
+    dispose() {
+      clearHold();
+      listeners.clear();
+    },
+    getSnapshot() {
+      return snapshot;
+    },
+    push(next: ShellSyncStatus) {
+      if (timer !== null && pendingStatus && isSameShellSyncStatus(pendingStatus, next)) {
+        return;
+      }
+
+      const shouldHold =
+        snapshot.mode === "uploading" &&
+        next.mode === "synced" &&
+        snapshot.count === 0 &&
+        next.count === 0;
+
+      if (shouldHold) {
+        clearHold();
+        pendingStatus = next;
+        timer = window.setTimeout(() => {
+          snapshot = next;
+          pendingStatus = null;
+          timer = null;
+          emit();
+        }, 2_000);
+        return;
+      }
+
+      clearHold();
+      if (!isSameShellSyncStatus(snapshot, next)) {
+        snapshot = next;
+        emit();
+      }
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
 }
 
 function isSameShellSyncStatus(left: ShellSyncStatus, right: ShellSyncStatus): boolean {

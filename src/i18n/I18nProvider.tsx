@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+  type PropsWithChildren,
+} from "react";
 
 import { useAuth } from "@/features/auth/AuthProvider";
 import { usePlanningData } from "@/features/planning/PlanningDataProvider";
@@ -8,6 +15,7 @@ import { detectLanguage, formatMessage, messages } from "./messages";
 import {
   persistLocalLanguagePreference,
   resolveLocalLanguagePreference,
+  subscribeLocalLanguagePreference,
 } from "./localLanguagePreference";
 
 type TranslationContextValue = {
@@ -21,7 +29,11 @@ const TranslationContext = createContext<TranslationContextValue | null>(null);
 export function I18nProvider({ children }: PropsWithChildren) {
   const { session } = useAuth();
   const { settings } = usePlanningData();
-  const [localLanguage, setLocalLanguage] = useState<LanguageCode>(resolveLocalLanguagePreference);
+  const localLanguage = useSyncExternalStore(
+    subscribeLocalLanguagePreference,
+    resolveLocalLanguagePreference,
+    resolveLocalLanguagePreference,
+  );
 
   useEffect(() => {
     if (!session || !messages[settings.language] || settings.language === localLanguage) {
@@ -29,7 +41,6 @@ export function I18nProvider({ children }: PropsWithChildren) {
     }
 
     persistLocalLanguagePreference(settings.language);
-    setLocalLanguage(settings.language);
   }, [localLanguage, session, settings.language]);
 
   const value = useMemo<TranslationContextValue>(() => {
@@ -43,7 +54,6 @@ export function I18nProvider({ children }: PropsWithChildren) {
       language,
       setLanguage(nextLanguage) {
         persistLocalLanguagePreference(nextLanguage);
-        setLocalLanguage(nextLanguage);
       },
       t(key, values) {
         const template = messages[language][key] ?? messages.en[key] ?? key;

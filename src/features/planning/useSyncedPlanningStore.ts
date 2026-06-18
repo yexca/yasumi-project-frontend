@@ -14,7 +14,6 @@ import {
 } from "@/domain/items/schemas";
 import {
   buildDefaultUserSettings,
-  detectSupportedLanguage,
   getDefaultDeviceTimeZone,
   isUserSettingsDefaults,
   isValidTimeZone,
