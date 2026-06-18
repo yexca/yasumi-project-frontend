@@ -124,8 +124,8 @@ describe("SettingsPage", () => {
     renderSettings();
 
     expect(screen.getByLabelText("Display name")).toBeInTheDocument();
-    expect(screen.getByLabelText("Current password")).toBeInTheDocument();
-    expect(screen.getByLabelText("New password")).toBeInTheDocument();
+    expect(screen.getByLabelText(/Current password/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/New password/)).toBeInTheDocument();
     expect(screen.getByLabelText("Weather city")).toHaveValue("Tokyo");
   });
 

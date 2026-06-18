@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { PropsWithChildren } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -37,6 +38,8 @@ function TestProviders({ children }: PropsWithChildren) {
 
 describe("PowerSyncRuntimeProvider", () => {
   it("connects after sign-in and clears the runtime on sign-out", async () => {
+    const user = userEvent.setup();
+
     seedSession();
 
     render(
@@ -48,7 +51,7 @@ describe("PowerSyncRuntimeProvider", () => {
     await waitFor(() => expect(testPowerSyncConnect).toHaveBeenCalledTimes(1));
     expect(await screen.findByTestId("device")).toHaveTextContent("device-test");
 
-    screen.getByRole("button", { name: "logout" }).click();
+    await user.click(screen.getByRole("button", { name: "logout" }));
 
     await waitFor(() => expect(testPowerSyncDisconnectAndClear).toHaveBeenCalled());
   });
