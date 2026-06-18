@@ -3,6 +3,12 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
+Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", {
+  configurable: true,
+  value: true,
+  writable: true,
+});
+
 type TestIndexedDbRecord = Record<string, unknown>;
 type TestPowerSyncListener = {
   statusChanged?: (status: typeof testPowerSyncStatus) => void;
