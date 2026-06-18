@@ -117,8 +117,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setErrorCode(null);
 
     if (accessToken && getOnlineState()) {
-      const { logoutSession } = await import("./authApi");
-      await logoutSession(accessToken).catch(() => undefined);
+      await (async () => {
+        const { logoutSession } = await import("./authApi");
+        await logoutSession(accessToken);
+      })().catch(() => undefined);
     }
   }, [session?.accessToken]);
 
