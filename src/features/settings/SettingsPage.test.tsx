@@ -14,7 +14,7 @@ import { ThemeProvider } from "@/styles/ThemeProvider";
 
 import { SettingsPage } from "./SettingsPage";
 
-function renderSettings() {
+async function renderSettings() {
   render(
     <MemoryRouter initialEntries={[ROUTE_PATHS.settings]}>
       <AuthProvider>
@@ -30,9 +30,12 @@ function renderSettings() {
       </AuthProvider>
     </MemoryRouter>,
   );
+
+  await screen.findByRole("heading", { name: "Settings" });
+  await waitFor(() => expect(screen.getByLabelText("App timezone")).toHaveValue("Asia/Tokyo"));
 }
 
-function renderSettingsWithShell() {
+async function renderSettingsWithShell() {
   render(
     <MemoryRouter initialEntries={[ROUTE_PATHS.settings]}>
       <AuthProvider>
@@ -50,6 +53,9 @@ function renderSettingsWithShell() {
       </AuthProvider>
     </MemoryRouter>,
   );
+
+  await screen.findByRole("heading", { name: "Settings" });
+  await waitFor(() => expect(screen.getByLabelText("App timezone")).toHaveValue("Asia/Tokyo"));
 }
 
 describe("SettingsPage", () => {
@@ -61,7 +67,7 @@ describe("SettingsPage", () => {
     const user = userEvent.setup();
     const image = new File(["image-bytes"], "background.png", { type: "image/png" });
 
-    renderSettings();
+    await renderSettings();
 
     await user.upload(screen.getByLabelText("Choose image"), image);
 
@@ -70,10 +76,10 @@ describe("SettingsPage", () => {
     });
   });
 
-  it("shows a localized validation error for unsupported background images", () => {
+  it("shows a localized validation error for unsupported background images", async () => {
     const textFile = new File(["nope"], "background.txt", { type: "text/plain" });
 
-    renderSettings();
+    await renderSettings();
 
     fireEvent.change(screen.getByLabelText("Choose image"), {
       target: { files: [textFile] },
@@ -85,7 +91,7 @@ describe("SettingsPage", () => {
   it("updates the synced language setting and refreshes visible labels", async () => {
     const user = userEvent.setup();
 
-    renderSettings();
+    await renderSettings();
 
     await user.selectOptions(screen.getByLabelText("Language"), "zh-Hans");
 
@@ -94,8 +100,8 @@ describe("SettingsPage", () => {
     expect(screen.queryByLabelText("区域设置")).not.toBeInTheDocument();
   });
 
-  it("shows common timezone choices instead of a free-form technical field", () => {
-    renderSettings();
+  it("shows common timezone choices instead of a free-form technical field", async () => {
+    await renderSettings();
 
     const timeZone = screen.getByLabelText("App timezone");
 
@@ -109,7 +115,7 @@ describe("SettingsPage", () => {
   it("hides fixed display previews and updates timezone from the curated list", async () => {
     const user = userEvent.setup();
 
-    renderSettings();
+    await renderSettings();
 
     const timeZone = screen.getByLabelText("App timezone");
     await user.selectOptions(timeZone, "Asia/Tokyo");
@@ -120,8 +126,8 @@ describe("SettingsPage", () => {
     expect(screen.queryByLabelText("Local date-time preview")).not.toBeInTheDocument();
   });
 
-  it("shows personal profile, password, and weather city settings", () => {
-    renderSettings();
+  it("shows personal profile, password, and weather city settings", async () => {
+    await renderSettings();
 
     expect(screen.getByLabelText("Display name")).toBeInTheDocument();
     expect(screen.getByLabelText(/Current password/)).toBeInTheDocument();
@@ -132,7 +138,7 @@ describe("SettingsPage", () => {
   it("allows customizing mobile bottom bar shortcuts", async () => {
     const user = userEvent.setup();
 
-    renderSettings();
+    await renderSettings();
 
     const firstShortcut = screen.getByLabelText("Shortcut 1");
     await user.selectOptions(firstShortcut, " /deadlines".trim());
@@ -145,7 +151,7 @@ describe("SettingsPage", () => {
   it("updates the app shell mobile bottom bar immediately after changing a shortcut", async () => {
     const user = userEvent.setup();
 
-    renderSettingsWithShell();
+    await renderSettingsWithShell();
 
     const mobileNav = screen.getByRole("navigation", { name: "Mobile navigation" });
     expect(within(mobileNav).getByText("Today")).toBeInTheDocument();
@@ -162,7 +168,7 @@ describe("SettingsPage", () => {
   it("keeps mobile bottom bar shortcut controls usable, including reset", async () => {
     const user = userEvent.setup();
 
-    renderSettings();
+    await renderSettings();
 
     await user.selectOptions(screen.getByLabelText("Shortcut 1"), ROUTE_PATHS.deadlines);
     await user.click(screen.getByRole("button", { name: "Reset shortcuts" }));
