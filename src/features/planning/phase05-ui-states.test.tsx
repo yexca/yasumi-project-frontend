@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -46,6 +46,35 @@ describe("phase 05 sync UI states", () => {
     expect(await screen.findByText("Call venue tomorrow")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Saved on this device (1)" })).toHaveLength(2);
     expect(screen.getByText("Saved on this device")).toBeInTheDocument();
+  });
+
+  it("shows pending state after creating a deadline task with a manual deadline date", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
+    window.history.pushState({}, "", "/inbox");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Inbox", level: 2 });
+    await user.click(firstButton("Quick Add"));
+    const dialog = screen.getByRole("dialog", { name: "Quick Add" });
+    await user.type(within(dialog).getByLabelText("Source text"), "Renew passport");
+    await user.selectOptions(within(dialog).getByLabelText("Create as"), "deadline_task");
+    await user.clear(within(dialog).getByLabelText("Deadline date"));
+    await user.type(within(dialog).getByLabelText("Deadline date"), "2026-07-12");
+    await user.click(screen.getByRole("button", { name: "Confirm suggestion" }));
+
+    act(() => {
+      window.history.pushState({}, "", "/deadlines");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(await screen.findByText("Renew passport")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Saved on this device (1)" })).toHaveLength(2);
   });
 });
 

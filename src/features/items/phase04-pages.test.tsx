@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -52,10 +52,39 @@ describe("phase 04 pages and action surfaces", () => {
     const sourceText = await screen.findByLabelText("Source text");
     await user.type(sourceText, "Deadline Send renewal decision by 2026-06-16");
 
-    expect(screen.getByRole("dialog", { name: "Quick Add" })).toBeInTheDocument();
-    expect(screen.getByText("Deadline task")).toBeInTheDocument();
-    expect(screen.getAllByText(/2026-06-16/).length).toBeGreaterThan(0);
+    const dialog = screen.getByRole("dialog", { name: "Quick Add" });
+    expect(dialog).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Create as")).toHaveValue("auto");
+    expect(within(dialog).getByLabelText("Deadline date")).toHaveValue("2026-06-16");
     expect(screen.getByRole("button", { name: "Save as Inbox" })).toBeInTheDocument();
+  });
+
+  it("allows Quick Add to create a deadline task with a manual deadline date", async () => {
+    cleanup();
+    window.history.pushState({}, "", "/inbox");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Inbox", level: 2 });
+    await user.click(firstButton("Quick Add"));
+    const dialog = screen.getByRole("dialog", { name: "Quick Add" });
+    await user.type(within(dialog).getByLabelText("Source text"), "Plan tax submission");
+    await user.selectOptions(within(dialog).getByLabelText("Create as"), "deadline_task");
+    await user.clear(within(dialog).getByLabelText("Deadline date"));
+    await user.type(within(dialog).getByLabelText("Deadline date"), "2026-07-01");
+    await user.click(screen.getByRole("button", { name: "Confirm suggestion" }));
+
+    act(() => {
+      window.history.pushState({}, "", "/deadlines");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(await screen.findByText("Plan tax submission")).toBeInTheDocument();
+    await user.click(screen.getByText("Plan tax submission"));
+    const detail = screen.getByLabelText("Item detail");
+    expect(within(detail).getByText("2026-07-01")).toBeInTheDocument();
   });
 
   it("allows Inbox completion while detail stays editable", async () => {
@@ -127,6 +156,23 @@ describe("phase 04 pages and action surfaces", () => {
     expect(links.indexOf("Work")).toBeLessThan(links.indexOf("Home"));
     expect(await screen.findByRole("heading", { name: "Work", level: 2 })).toBeInTheDocument();
     expect(screen.getByText("Draft roadmap update")).toBeInTheDocument();
+  });
+
+  it("creates a new area from the Areas page", async () => {
+    cleanup();
+    window.history.pushState({}, "", "/areas");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Areas", level: 2 });
+    await user.click(screen.getByRole("button", { name: "Create area" }));
+    const dialog = screen.getByRole("dialog", { name: "Create area" });
+    await user.type(within(dialog).getByRole("textbox", { name: /Area/ }), "Errands");
+    await user.click(within(dialog).getByRole("button", { name: "Create area" }));
+
+    expect(await screen.findByRole("heading", { name: "Errands", level: 3 })).toBeInTheDocument();
   });
 
   it("includes synced settings and local visual settings on Settings", async () => {

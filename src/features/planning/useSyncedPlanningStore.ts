@@ -285,6 +285,36 @@ function buildSyncedMutations({
 
       return classifySyncedItem(database, deviceId, userId, item, input, data.today);
     },
+    createArea(input) {
+      const name = input.name.trim();
+
+      if (name.length === 0) {
+        const error = validationError({ title: "too_small" });
+        const mutation = buildRejectedMutation(userId, deviceId, "areas", createUuid(), "create");
+        void writeRejectedContext(database, mutation, error, new Date().toISOString());
+        return { ok: false, error };
+      }
+
+      const rowId = createUuid();
+      return execute("areas", rowId, "create", async (context, tx) => {
+        await insertArea(tx, {
+          id: rowId,
+          user_id: context.userId,
+          created_at: context.now,
+          updated_at: context.now,
+          deleted_at: null,
+          archived_at: null,
+          hidden_reason: null,
+          client_updated_at: context.now,
+          server_updated_at: context.now,
+          created_by_device_id: context.deviceId,
+          updated_by_device_id: context.deviceId,
+          revision: 0,
+          name,
+          sort_order: Math.max(0, ...data.areas.map((area) => area.sort_order)) + 10,
+        });
+      });
+    },
     createCapture(input) {
       const rowId = createUuid();
       return execute("items", rowId, "create", async (context, tx) => {
@@ -626,9 +656,13 @@ function buildCaptureRow(
     locale: data.settings.locale,
     today: data.today,
   });
-  const itemType = input.mode === "inbox" ? "inbox" : preview.itemTypeSuggestion;
+  const itemType =
+    input.mode === "inbox" ? "inbox" : (input.targetItemType ?? preview.itemTypeSuggestion);
   const effectiveItemType =
-    input.mode === "suggestion" && preview.confidence === "low" && input.defaultItemType
+    input.mode === "suggestion" &&
+    input.targetItemType === undefined &&
+    preview.confidence === "low" &&
+    input.defaultItemType
       ? input.defaultItemType
       : itemType;
   const captureTitle = input.sourceText.trim().replace(/\s+/g, " ") || "Untitled capture";
@@ -650,14 +684,16 @@ function buildCaptureRow(
     title: input.mode === "inbox" ? captureTitle : preview.cleanTitle,
     note: null,
     status: "active",
-    area_id: null,
+    area_id: input.areaId ?? null,
     scheduled_date:
       effectiveItemType === "date_task"
         ? (preview.fields.scheduled_date ?? input.defaultScheduledDate ?? null)
         : null,
     scheduled_time_zone_mode: effectiveItemType === "date_task" ? "floating" : null,
     deadline_date:
-      effectiveItemType === "deadline_task" ? (preview.fields.deadline_date ?? null) : null,
+      effectiveItemType === "deadline_task"
+        ? (input.deadlineDate ?? preview.fields.deadline_date ?? null)
+        : null,
     deadline_time:
       effectiveItemType === "deadline_task" ? (preview.fields.deadline_time ?? null) : null,
     deadline_time_zone_mode:
@@ -885,6 +921,31 @@ async function insertItem(
       scheduled_time_zone_mode, status, title
     ) VALUES (${Array.from({ length: 41 }, () => "?").join(", ")})`,
     itemParams(row),
+  );
+}
+
+async function insertArea(tx: Pick<AbstractPowerSyncDatabase, "execute">, row: AreaDto): Promise<void> {
+  await tx.execute(
+    `INSERT INTO areas (
+      id, user_id, archived_at, client_updated_at, created_at, created_by_device_id, deleted_at,
+      hidden_reason, revision, server_updated_at, updated_at, updated_by_device_id, name, sort_order
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      row.id,
+      row.user_id,
+      row.archived_at,
+      row.client_updated_at,
+      row.created_at,
+      row.created_by_device_id,
+      row.deleted_at,
+      row.hidden_reason,
+      row.revision,
+      row.server_updated_at,
+      row.updated_at,
+      row.updated_by_device_id,
+      row.name,
+      row.sort_order,
+    ],
   );
 }
 

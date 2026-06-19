@@ -2,7 +2,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button, IconButton } from "@/components/primitives/Button";
-import { AreaDeleteDialog, ItemFlowDialog } from "@/features/items/ItemDialogs";
+import { AreaCreateDialog, AreaDeleteDialog, ItemFlowDialog } from "@/features/items/ItemDialogs";
 import {
   EmptyState,
   ItemSection,
@@ -22,6 +22,7 @@ export function AreasPage() {
   const data = usePlanningData();
   const areas = queryAreaRows(data.areas);
   const detailRows = areas.flatMap((area) => queryAreaItemRows(data.items, area.id));
+  const [createAreaOpen, setCreateAreaOpen] = useState(false);
   const [deleteArea, setDeleteArea] = useState<AreaDto | null>(null);
   const [activeFlow, setActiveFlow] = useState<{
     action: ItemAction;
@@ -32,7 +33,9 @@ export function AreasPage() {
   return (
     <PageFrame
       actions={
-        <Button icon={<Plus aria-hidden="true" size={16} />}>{t("area.action.create")}</Button>
+        <Button icon={<Plus aria-hidden="true" size={16} />} onClick={() => setCreateAreaOpen(true)}>
+          {t("area.action.create")}
+        </Button>
       }
       areas={data.areas}
       description={t("page.areas.description")}
@@ -88,9 +91,11 @@ export function AreasPage() {
         <EmptyState
           actionLabel={t("area.action.create")}
           description={t("empty.areas.description")}
+          onAction={() => setCreateAreaOpen(true)}
           title={t("empty.areas.title")}
         />
       )}
+      <AreaCreateDialog onOpenChange={setCreateAreaOpen} open={createAreaOpen} />
       <ItemFlowDialog
         action={activeFlow?.action ?? null}
         areas={data.areas}

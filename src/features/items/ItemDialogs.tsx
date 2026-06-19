@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/primitives/Button";
 import { Dialog, DialogClose } from "@/components/primitives/Dialog";
 import { Select, TextArea, TextInput } from "@/components/primitives/Field";
+import type { ItemType } from "@/domain/constants/shared";
 import type { DateOnly } from "@/domain/time/dateOnly";
 import { isDateOnly } from "@/domain/time/dateOnly";
 import { usePlanningData, usePlanningMutations } from "@/features/planning/usePlanningData";
@@ -16,6 +17,7 @@ import styles from "./ItemDialogs.module.css";
 type ClassificationTarget = "date_task" | "deadline_task" | "idea" | "recurring_template";
 
 type QuickAddDialogProps = {
+  areas?: AreaDto[];
   defaultCapture?: {
     defaultItemType?: "date_task";
     defaultScheduledDate?: DateOnly;
@@ -24,11 +26,19 @@ type QuickAddDialogProps = {
   open: boolean;
 };
 
-export function QuickAddDialog({ defaultCapture, onOpenChange, open }: QuickAddDialogProps) {
+export function QuickAddDialog({
+  areas = [],
+  defaultCapture,
+  onOpenChange,
+  open,
+}: QuickAddDialogProps) {
   const { t } = useTranslation();
   const data = usePlanningData();
   const { createCapture } = usePlanningMutations();
   const [sourceText, setSourceText] = useState("");
+  const [targetItemType, setTargetItemType] = useState<ItemType | "auto">("auto");
+  const [deadlineDate, setDeadlineDate] = useState<string | null>(null);
+  const [areaId, setAreaId] = useState("");
   const preview = useMemo(
     () =>
       parseQuickAdd(sourceText, {
@@ -38,14 +48,28 @@ export function QuickAddDialog({ defaultCapture, onOpenChange, open }: QuickAddD
       }),
     [data.settings.locale, data.today, sourceText, t],
   );
+
+  const effectiveTarget =
+    targetItemType === "auto"
+      ? (defaultCapture?.defaultItemType ?? preview.itemTypeSuggestion)
+      : targetItemType;
+  const resolvedDeadlineDate =
+    effectiveTarget === "deadline_task" ? (deadlineDate ?? preview.fields.deadline_date ?? "") : "";
+
   const save = (mode: "inbox" | "suggestion") => {
     createCapture({
+      areaId: areaId === "" ? null : areaId,
       defaultItemType: defaultCapture?.defaultItemType,
+      deadlineDate: effectiveTarget === "deadline_task" ? toDateOnly(resolvedDeadlineDate) : null,
       defaultScheduledDate: defaultCapture?.defaultScheduledDate,
       mode,
       sourceText,
+      targetItemType: targetItemType === "auto" ? undefined : targetItemType,
     });
     setSourceText("");
+    setTargetItemType("auto");
+    setDeadlineDate(null);
+    setAreaId("");
     onOpenChange(false);
   };
 
@@ -64,10 +88,41 @@ export function QuickAddDialog({ defaultCapture, onOpenChange, open }: QuickAddD
           rows={4}
           value={sourceText}
         />
+        <Select
+          label={t("quickAdd.targetType.label")}
+          onChange={(event) => setTargetItemType(event.target.value as ItemType | "auto")}
+          value={targetItemType}
+        >
+          <option value="auto">{t("quickAdd.targetType.auto")}</option>
+          <option value="inbox">{t("item.type.inbox")}</option>
+          <option value="date_task">{t("item.type.dateTask")}</option>
+          <option value="deadline_task">{t("item.type.deadlineTask")}</option>
+          <option value="idea">{t("item.type.idea")}</option>
+        </Select>
+        <Select
+          label={t("area.picker.label")}
+          onChange={(event) => setAreaId(event.target.value)}
+          value={areaId}
+        >
+          <option value="">{t("area.picker.none")}</option>
+          {areas.map((area) => (
+            <option key={area.id} value={area.id}>
+              {area.name}
+            </option>
+          ))}
+        </Select>
+        {effectiveTarget === "deadline_task" ? (
+          <TextInput
+            label={t("item.field.deadlineDate")}
+            onChange={(event) => setDeadlineDate(event.target.value)}
+            type="date"
+            value={resolvedDeadlineDate}
+          />
+        ) : null}
         <PreviewList
           rows={[
             [t("quickAdd.preview.title"), preview.cleanTitle],
-            [t("quickAdd.preview.type"), t(itemTypeToMessageKey(preview.itemTypeSuggestion))],
+            [t("quickAdd.preview.type"), t(itemTypeToMessageKey(effectiveTarget))],
             [t("quickAdd.preview.confidence"), t(`quickAdd.confidence.${preview.confidence}`)],
             [
               t("quickAdd.preview.fragments"),
@@ -79,6 +134,52 @@ export function QuickAddDialog({ defaultCapture, onOpenChange, open }: QuickAddD
           <Button onClick={() => save("inbox")}>{t("quickAdd.saveInbox")}</Button>
           <Button onClick={() => save("suggestion")} variant="primary">
             {t("quickAdd.confirm")}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+type AreaCreateDialogProps = {
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+};
+
+export function AreaCreateDialog({ onOpenChange, open }: AreaCreateDialogProps) {
+  const { t } = useTranslation();
+  const { createArea } = usePlanningMutations();
+  const [name, setName] = useState("");
+
+  return (
+    <Dialog
+      description={t("area.create.description")}
+      onOpenChange={onOpenChange}
+      open={open}
+      title={t("area.create.title")}
+    >
+      <div className={styles.dialogBody}>
+        <TextInput
+          label={t("area.field.name")}
+          onChange={(event) => setName(event.target.value)}
+          required
+          value={name}
+        />
+        <div className={styles.actions}>
+          <DialogClose asChild>
+            <Button>{t("common.cancel")}</Button>
+          </DialogClose>
+          <Button
+            onClick={() => {
+              const result = createArea({ name });
+              if (result.ok) {
+                setName("");
+                onOpenChange(false);
+              }
+            }}
+            variant="primary"
+          >
+            {t("area.create.confirm")}
           </Button>
         </div>
       </div>

@@ -13,7 +13,7 @@ This module note covers the shared planning-item interaction layer.
 ## Current Responsibility Split
 
 - `ItemList.tsx` contains `PageFrame`, `ItemSection`, row orchestration, selection state, detail panes, markdown rendering, and note autosave behavior.
-- `ItemDialogs.tsx` holds modal workflows such as Quick Add and item-edit actions.
+- `ItemDialogs.tsx` holds modal workflows such as Quick Add, area creation, and item-edit actions.
 - `ItemActions.tsx` maps row state to available actions.
 - `itemPresentation.tsx` contains presentation helpers for labels, state keys, and item markers.
 

@@ -123,19 +123,26 @@ export type PostponeInput = {
 };
 
 export type QuickAddInput = {
+  areaId?: string | null;
   defaultItemType?: "date_task";
+  deadlineDate?: DateOnly | null;
   defaultScheduledDate?: DateOnly;
   mode: "inbox" | "suggestion";
+  targetItemType?: ItemType;
   sourceText: string;
 };
 
 export type AreaDeleteChoice = "area_only" | "area_and_items";
+export type CreateAreaInput = {
+  name: string;
+};
 
 export type UserSettingsInput = Partial<UserSettingsDefaults>;
 
 export type PlanningMutations = {
   archiveRejectedContext: (localMutationId: string) => void;
   classifyItem: (itemId: string, input: ClassificationInput) => MutationResult;
+  createArea: (input: CreateAreaInput) => MutationResult;
   createCapture: (input: QuickAddInput) => MutationResult;
   deleteArea: (areaId: string, choice: AreaDeleteChoice) => MutationResult;
   editItem: (itemId: string, input: ItemEditorInput) => MutationResult;
@@ -160,6 +167,7 @@ type PlanningState = PlanningData & {
 
 type PlanningAction =
   | { type: "archiveRejectedContext"; localMutationId: string }
+  | { type: "createArea"; input: CreateAreaInput; now: string }
   | { type: "classifyItem"; itemId: string; input: ClassificationInput; now: string }
   | { type: "createCapture"; input: QuickAddInput; now: string }
   | { type: "deleteArea"; areaId: string; choice: AreaDeleteChoice; now: string }
@@ -463,6 +471,9 @@ function FixturePlanningDataProvider({ children }: PropsWithChildren) {
       classifyItem(itemId, input) {
         return commit({ type: "classifyItem", itemId, input, now: new Date().toISOString() });
       },
+      createArea(input) {
+        return commit({ type: "createArea", input, now: new Date().toISOString() });
+      },
       createCapture(input) {
         return commit({ type: "createCapture", input, now: new Date().toISOString() });
       },
@@ -674,6 +685,10 @@ function reducePlanningState(
     return createCapture(state, action.input, action.now);
   }
 
+  if (action.type === "createArea") {
+    return createArea(state, action.input, action.now);
+  }
+
   if (action.type === "editItem") {
     return updateItem(state, action.itemId, action.now, "edit", (item) => ({
       ...item,
@@ -790,9 +805,13 @@ function createCapture(
     locale: state.settings.locale,
     today: state.today,
   });
-  const itemType = input.mode === "inbox" ? "inbox" : preview.itemTypeSuggestion;
+  const itemType =
+    input.mode === "inbox" ? "inbox" : (input.targetItemType ?? preview.itemTypeSuggestion);
   const effectiveItemType =
-    input.mode === "suggestion" && preview.confidence === "low" && input.defaultItemType
+    input.mode === "suggestion" &&
+    input.targetItemType === undefined &&
+    preview.confidence === "low" &&
+    input.defaultItemType
       ? input.defaultItemType
       : itemType;
   const captureTitle = input.sourceText.trim().replace(/\s+/g, " ") || "Untitled capture";
@@ -813,14 +832,16 @@ function createCapture(
     title: input.mode === "inbox" ? captureTitle : preview.cleanTitle,
     note: null,
     status: "active",
-    area_id: null,
+    area_id: input.areaId ?? null,
     scheduled_date:
       effectiveItemType === "date_task"
         ? (preview.fields.scheduled_date ?? input.defaultScheduledDate ?? null)
         : null,
     scheduled_time_zone_mode: effectiveItemType === "date_task" ? "floating" : null,
     deadline_date:
-      effectiveItemType === "deadline_task" ? (preview.fields.deadline_date ?? null) : null,
+      effectiveItemType === "deadline_task"
+        ? (input.deadlineDate ?? preview.fields.deadline_date ?? null)
+        : null,
     deadline_time:
       effectiveItemType === "deadline_task" ? (preview.fields.deadline_time ?? null) : null,
     deadline_time_zone_mode:
@@ -842,6 +863,49 @@ function createCapture(
     state: {
       ...state,
       items: [row, ...state.items],
+      pendingMutations: [...state.pendingMutations, mutation],
+    },
+    result: { ok: true, mutation },
+  };
+}
+
+function createArea(
+  state: PlanningState,
+  input: CreateAreaInput,
+  now: string,
+): { state: PlanningState; result: MutationResult } {
+  const name = input.name.trim();
+
+  if (name.length === 0) {
+    const error = validationError({ title: "too_small" });
+    return {
+      state: appendRejectedWrite(state, createId("area"), "areas", "create", error, now),
+      result: { ok: false, error },
+    };
+  }
+
+  const area: AreaDto = {
+    id: createId("area"),
+    user_id: USER_ID,
+    created_at: now,
+    updated_at: now,
+    deleted_at: null,
+    archived_at: null,
+    hidden_reason: null,
+    client_updated_at: now,
+    server_updated_at: now,
+    created_by_device_id: state.deviceId,
+    updated_by_device_id: state.deviceId,
+    revision: 0,
+    name,
+    sort_order: Math.max(0, ...state.areas.map((area) => area.sort_order)) + 10,
+  };
+  const mutation = buildMutation(state, area.id, "areas", "create");
+
+  return {
+    state: {
+      ...state,
+      areas: [...state.areas, area],
       pendingMutations: [...state.pendingMutations, mutation],
     },
     result: { ok: true, mutation },

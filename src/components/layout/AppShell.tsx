@@ -255,6 +255,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       {quickAddOpen ? (
         <QuickAddDialog
+          areas={areas}
           defaultCapture={
             isTodayRoute ? { defaultItemType: "date_task", defaultScheduledDate: today } : undefined
           }

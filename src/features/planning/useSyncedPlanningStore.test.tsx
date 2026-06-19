@@ -146,6 +146,29 @@ describe("useSyncedPlanningStore", () => {
     expect(pendingWrite?.transactionId).toBe(itemWrite?.transactionId);
   });
 
+  it("commits createArea row and pending context in the same transaction", async () => {
+    const user = userEvent.setup();
+    const database = mocks.database;
+
+    render(<CreateAreaProbe />);
+
+    await user.click(screen.getByRole("button", { name: "Create area" }));
+
+    await waitFor(() => {
+      expect(database?.calls.some((call) => call.sql.includes("INSERT INTO areas"))).toBe(true);
+    });
+
+    const areaWrite = database?.calls.find((call) => call.sql.includes("INSERT INTO areas"));
+    const pendingWrite = database?.calls.find((call) =>
+      call.sql.includes("INSERT OR REPLACE INTO pending_write_context"),
+    );
+
+    expect(areaWrite?.params).toContain("Errands");
+    expect(pendingWrite?.params).toContain("areas");
+    expect(pendingWrite?.params).toContain(areaWrite?.params[0]);
+    expect(pendingWrite?.transactionId).toBe(areaWrite?.transactionId);
+  });
+
   it("does not leave createCapture pending context when item insert fails", async () => {
     const user = userEvent.setup();
     const database = mocks.database;
@@ -230,6 +253,16 @@ function DeleteAreaProbe() {
   return (
     <button onClick={() => store.mutations.deleteArea("area-work", "area_and_items")} type="button">
       Delete area with items
+    </button>
+  );
+}
+
+function CreateAreaProbe() {
+  const store = useSyncedPlanningStore();
+
+  return (
+    <button onClick={() => store.mutations.createArea({ name: "Errands" })} type="button">
+      Create area
     </button>
   );
 }

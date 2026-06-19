@@ -13,6 +13,7 @@ export {
 export type {
   AreaDeleteChoice,
   ClassificationInput,
+  CreateAreaInput,
   ItemEditorInput,
   LocalMutationContext,
   MutationResult,
