@@ -12,6 +12,7 @@ import { usePlanningData } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { buildTodayViewModel } from "@/repositories/local-db/readModels";
 import type { LocalItemRow } from "@/domain/items/schemas";
+import { openQuickAdd } from "@/features/items/openQuickAdd";
 
 export function TodayPage() {
   const { t } = useTranslation();
@@ -63,7 +64,7 @@ export function TodayPage() {
         <EmptyState
           actionLabel={t("quickAdd.button")}
           description={t("empty.today.description")}
-          onAction={() => window.dispatchEvent(new CustomEvent("yasumi:quick-add"))}
+          onAction={() => openQuickAdd({ taskType: "date_task", scheduledDate: data.today })}
           title={t("empty.today.title")}
         />
       )}

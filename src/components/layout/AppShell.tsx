@@ -20,7 +20,7 @@ import { IconButton } from "@/components/primitives/Button";
 import { Menu, MenuItem } from "@/components/primitives/Menu";
 import { getDateOnlyInTimeZone } from "@/domain/time/dateOnly";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { QuickAddDialog } from "@/features/items/ItemDialogs";
+import { QuickAddDialog, type QuickAddDefaultCapture } from "@/features/items/ItemDialogs";
 import { usePlanningData, usePlanningMutations } from "@/features/planning/PlanningDataProvider";
 import { useSyncStatus } from "@/features/sync/useSyncStatus";
 import { useTranslation } from "@/i18n/I18nProvider";
@@ -48,11 +48,19 @@ export function AppShell({ children }: { children: ReactNode }) {
     weatherCity: settings.weather_city,
   });
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddDefaultCapture, setQuickAddDefaultCapture] = useState<
+    QuickAddDefaultCapture | undefined
+  >(undefined);
   const { mobileNavItems, moreNavItems } = useMobileNavSlots();
-  const isTodayRoute = pathname === ROUTE_PATHS.today;
+  const routeDefaultCapture = getQuickAddDefaultCapture(pathname, today);
 
   useEffect(() => {
-    function openQuickAdd() {
+    function openQuickAdd(event: Event) {
+      if (event instanceof CustomEvent) {
+        setQuickAddDefaultCapture(event.detail as QuickAddDefaultCapture | undefined);
+      } else {
+        setQuickAddDefaultCapture(undefined);
+      }
       setQuickAddOpen(true);
     }
 
@@ -67,7 +75,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className={styles.brandMark}>Y</span>
           <span>Yasumi</span>
         </div>
-        <button className={styles.navQuickAdd} onClick={() => setQuickAddOpen(true)} type="button">
+        <button
+          className={styles.navQuickAdd}
+          onClick={() => {
+            setQuickAddDefaultCapture(routeDefaultCapture);
+            setQuickAddOpen(true);
+          }}
+          type="button"
+        >
           <Plus aria-hidden="true" size={17} />
           <span>{t("quickAdd.button")}</span>
         </button>
@@ -246,7 +261,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <button
         aria-label={t("quickAdd.button")}
         className={styles.mobileQuickAdd}
-        onClick={() => setQuickAddOpen(true)}
+        onClick={() => {
+          setQuickAddDefaultCapture(routeDefaultCapture);
+          setQuickAddOpen(true);
+        }}
         type="button"
       >
         <Plus aria-hidden="true" size={22} />
@@ -257,7 +275,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <QuickAddDialog
           areas={areas}
           defaultCapture={
-            isTodayRoute ? { defaultItemType: "date_task", defaultScheduledDate: today } : undefined
+            quickAddDefaultCapture ??
+            routeDefaultCapture
           }
           onOpenChange={setQuickAddOpen}
           open={quickAddOpen}
@@ -265,6 +284,30 @@ export function AppShell({ children }: { children: ReactNode }) {
       ) : null}
     </div>
   );
+}
+
+function getQuickAddDefaultCapture(
+  pathname: string,
+  today: ReturnType<typeof getDateOnlyInTimeZone>,
+): QuickAddDefaultCapture | undefined {
+  if (pathname === ROUTE_PATHS.today) {
+    return { taskType: "date_task", scheduledDate: today };
+  }
+
+  if (pathname === ROUTE_PATHS.deadlines) {
+    return { taskType: "deadline_task" };
+  }
+
+  if (pathname === ROUTE_PATHS.ideas) {
+    return { taskType: "idea" };
+  }
+
+  const areaMatch = pathname.match(/^\/areas\/([^/]+)$/);
+  if (areaMatch?.[1]) {
+    return { areaId: decodeURIComponent(areaMatch[1]) };
+  }
+
+  return undefined;
 }
 
 type SyncStatusProps = {

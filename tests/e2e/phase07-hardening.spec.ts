@@ -31,10 +31,12 @@ test("Quick Add creates a local capture and shows pending sync state", async ({ 
   await page.goto("/inbox");
 
   await page.getByRole("button", { name: "Quick Add" }).click();
-  await page.getByLabel("Source text").fill("call venue tomorrow");
+  await page.getByLabel("Task name").fill("call venue tomorrow");
   await expect(page.locator("dd", { hasText: "call venue" })).toBeVisible();
-  await expect(page.locator("dd", { hasText: "Date task" })).toBeVisible();
-  await page.getByRole("button", { name: "Save as Inbox" }).click();
+  await expect(
+    page.locator("dl div", { hasText: "Recognized fragments" }).locator("dd"),
+  ).toHaveText("tomorrow");
+  await page.getByRole("button", { name: "Save" }).click();
 
   const savedRow = page.locator("article.surface-row", { hasText: "call venue tomorrow" });
   await expect(savedRow).toBeVisible();

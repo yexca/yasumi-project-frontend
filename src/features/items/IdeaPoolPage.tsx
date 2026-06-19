@@ -12,6 +12,7 @@ import { usePlanningData } from "@/features/planning/usePlanningData";
 import type { LocalItemRow } from "@/domain/items/schemas";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { queryIdeaRows } from "@/repositories/local-db/readModels";
+import { openQuickAdd } from "@/features/items/openQuickAdd";
 
 export function IdeaPoolPage() {
   const { t } = useTranslation();
@@ -58,7 +59,7 @@ export function IdeaPoolPage() {
         <EmptyState
           actionLabel={t("quickAdd.button")}
           description={t("empty.ideas.description")}
-          onAction={() => window.dispatchEvent(new CustomEvent("yasumi:quick-add"))}
+          onAction={() => openQuickAdd({ taskType: "idea" })}
           title={t("empty.ideas.title")}
         />
       )}

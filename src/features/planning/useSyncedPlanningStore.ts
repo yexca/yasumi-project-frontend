@@ -29,6 +29,7 @@ import { resolveLocalLanguagePreference } from "@/i18n/localLanguagePreference";
 
 import type {
   ClassificationInput,
+  LegacyQuickAddInput,
   LocalMutationContext,
   MutationResult,
   PlanningData,
@@ -648,24 +649,21 @@ function writeItemUpdate(
 
 function buildCaptureRow(
   data: PlanningData,
-  input: QuickAddInput,
+  input: QuickAddInput | LegacyQuickAddInput,
   context: WriteContext,
   rowId: string,
 ): LocalItemRow {
   const preview = parseQuickAdd(input.sourceText, {
+    ignoredFragments: "ignoredFragments" in input ? input.ignoredFragments : undefined,
     locale: data.settings.locale,
     today: data.today,
   });
-  const itemType =
-    input.mode === "inbox" ? "inbox" : (input.targetItemType ?? preview.itemTypeSuggestion);
-  const effectiveItemType =
-    input.mode === "suggestion" &&
-    input.targetItemType === undefined &&
-    preview.confidence === "low" &&
-    input.defaultItemType
-      ? input.defaultItemType
-      : itemType;
   const captureTitle = input.sourceText.trim().replace(/\s+/g, " ") || "Untitled capture";
+  const effectiveItemType = getQuickAddItemType(input);
+  const manualScheduledDate = "scheduledDate" in input ? input.scheduledDate : null;
+  const manualPlannedWorkDate = "plannedWorkDate" in input ? input.plannedWorkDate : null;
+  const note = "note" in input ? input.note : null;
+  const title = effectiveItemType === "inbox" ? captureTitle : preview.cleanTitle;
 
   return normalizeItemRow({
     id: rowId,
@@ -681,15 +679,16 @@ function buildCaptureRow(
     updated_by_device_id: context.deviceId,
     revision: 0,
     item_type: effectiveItemType,
-    title: input.mode === "inbox" ? captureTitle : preview.cleanTitle,
-    note: null,
+    title: title.length > 0 ? title : captureTitle,
+    note: note ?? null,
     status: "active",
     area_id: input.areaId ?? null,
     scheduled_date:
       effectiveItemType === "date_task"
-        ? (preview.fields.scheduled_date ?? input.defaultScheduledDate ?? null)
+        ? (manualScheduledDate ?? preview.fields.scheduled_date ?? getLegacyDefaultScheduledDate(input))
         : null,
     scheduled_time_zone_mode: effectiveItemType === "date_task" ? "floating" : null,
+    planned_work_date: effectiveItemType === "deadline_task" ? (manualPlannedWorkDate ?? null) : null,
     deadline_date:
       effectiveItemType === "deadline_task"
         ? (input.deadlineDate ?? preview.fields.deadline_date ?? null)
@@ -710,6 +709,18 @@ function buildCaptureRow(
       warnings: preview.warnings,
     },
   });
+}
+
+function getQuickAddItemType(input: QuickAddInput | LegacyQuickAddInput): LocalItemRow["item_type"] {
+  if ("mode" in input) {
+    return input.mode === "inbox" ? "inbox" : (input.targetItemType ?? "inbox");
+  }
+
+  return input.targetItemType;
+}
+
+function getLegacyDefaultScheduledDate(input: QuickAddInput | LegacyQuickAddInput): DateOnly | null {
+  return "defaultScheduledDate" in input ? (input.defaultScheduledDate ?? null) : null;
 }
 
 function classifySyncedItem(

@@ -236,8 +236,8 @@ function CreateCaptureProbe() {
     <button
       onClick={() =>
         store.mutations.createCapture({
-          mode: "inbox",
           sourceText: "Email Aiko",
+          targetItemType: "inbox",
         })
       }
       type="button"

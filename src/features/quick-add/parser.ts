@@ -22,6 +22,7 @@ export type QuickAddParseResult = {
 };
 
 type ParseOptions = {
+  ignoredFragments?: QuickAddFragment[];
   locale: string;
   today: DateOnly;
   untitled?: string;
@@ -39,12 +40,18 @@ const WEEKDAY_BY_ENGLISH = {
 
 export function parseQuickAdd(
   sourceText: string,
-  { locale, today, untitled = "Untitled capture" }: ParseOptions,
+  { ignoredFragments = [], locale, today, untitled = "Untitled capture" }: ParseOptions,
 ): QuickAddParseResult {
   const normalized = sourceText.trim().replace(/\s+/g, " ");
   const baseTitle = normalized.length > 0 ? normalized : untitled;
-  const dateMatches = findDateFragments(normalized, today, locale);
-  const timeMatch = normalized.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  const dateMatches = findDateFragments(normalized, today, locale).filter(
+    (match) => !isIgnoredFragment(ignoredFragments, match.text, match.value),
+  );
+  const rawTimeMatch = normalized.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  const timeMatch =
+    rawTimeMatch && !isIgnoredFragment(ignoredFragments, rawTimeMatch[0], normalizeTime(rawTimeMatch[0]))
+      ? rawTimeMatch
+      : null;
   const deadlineMatch = findDeadlineMarker(normalized, dateMatches[0]?.text, timeMatch?.[0]);
   const reviewMatch = findReviewMarker(normalized, dateMatches[0]?.text);
   const warnings =
@@ -245,6 +252,16 @@ function nextWeekday(today: DateOnly, targetDay: number): DateOnly {
 function normalizeTime(time: string) {
   const [hour, minute] = time.split(":");
   return `${hour?.padStart(2, "0")}:${minute}:00`;
+}
+
+function isIgnoredFragment(
+  ignoredFragments: QuickAddFragment[],
+  text: string,
+  normalizedValue: string,
+) {
+  return ignoredFragments.some(
+    (fragment) => fragment.text === text || fragment.normalizedValue === normalizedValue,
+  );
 }
 
 function formatDate(year: number, month: number, day: number): DateOnly {

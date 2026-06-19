@@ -10,6 +10,80 @@
   gap: var(--space-2);
 }
 
+.quickAddSelectRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.highlightField {
+  display: grid;
+  gap: 6px;
+}
+
+.highlightLabel {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-metadata);
+  font-weight: 700;
+}
+
+.highlightInputFrame {
+  position: relative;
+  min-width: 0;
+}
+
+.highlightInputFrame input,
+.highlightMirror {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 42px;
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  font: inherit;
+  line-height: 1.35;
+  letter-spacing: 0;
+  white-space: pre;
+}
+
+.highlightInputFrame input {
+  position: relative;
+  z-index: 1;
+  border: 1px solid var(--color-border-default);
+  background: transparent;
+  color: transparent;
+  caret-color: var(--color-text-primary);
+  outline: none;
+}
+
+.highlightInputFrame input::placeholder {
+  color: transparent;
+}
+
+.highlightInputFrame input:focus {
+  border-color: var(--color-accent-default);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+.highlightMirror {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid transparent;
+  color: var(--color-text-primary);
+  pointer-events: none;
+}
+
+.highlightMirror mark {
+  border-radius: 4px;
+  background: var(--color-warning-soft);
+  color: inherit;
+  padding: 1px 2px;
+}
+
+.highlightPlaceholder {
+  color: var(--color-text-tertiary);
+}
+
 .previewList {
   display: grid;
   gap: 8px;
@@ -124,6 +198,7 @@
 }
 
 @media (max-width: 640px) {
+  .quickAddSelectRow,
   .previewList div,
   .templateRow {
     grid-template-columns: 1fr;

@@ -14,6 +14,7 @@ import { usePlanningData } from "@/features/planning/usePlanningData";
 import type { LocalItemRow } from "@/domain/items/schemas";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { queryUpcomingRows } from "@/repositories/local-db/readModels";
+import { openQuickAdd } from "@/features/items/openQuickAdd";
 
 export function UpcomingPage() {
   const { t } = useTranslation();
@@ -56,7 +57,7 @@ export function UpcomingPage() {
         <EmptyState
           actionLabel={t("quickAdd.button")}
           description={t("empty.upcoming.description")}
-          onAction={() => window.dispatchEvent(new CustomEvent("yasumi:quick-add"))}
+          onAction={() => openQuickAdd({ taskType: "date_task" })}
           title={t("empty.upcoming.title")}
         />
       )}

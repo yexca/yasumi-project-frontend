@@ -1,27 +1,30 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/primitives/Button";
 import { Dialog, DialogClose } from "@/components/primitives/Dialog";
 import { Select, TextArea, TextInput } from "@/components/primitives/Field";
-import type { ItemType } from "@/domain/constants/shared";
 import type { DateOnly } from "@/domain/time/dateOnly";
 import { isDateOnly } from "@/domain/time/dateOnly";
 import { usePlanningData, usePlanningMutations } from "@/features/planning/usePlanningData";
 import type { AreaDto, LocalItemRow, RecurringTaskTemplateDto } from "@/domain/items/schemas";
 import { useTranslation } from "@/i18n/I18nProvider";
-import { parseQuickAdd } from "@/features/quick-add/parser";
+import { parseQuickAdd, type QuickAddFragment } from "@/features/quick-add/parser";
 
 import type { ItemAction } from "./itemPresentation";
 import styles from "./ItemDialogs.module.css";
 
 type ClassificationTarget = "date_task" | "deadline_task" | "idea" | "recurring_template";
+type QuickAddTaskType = "none" | "date_task" | "deadline_task" | "idea";
+
+export type QuickAddDefaultCapture = {
+  areaId?: string | null;
+  taskType?: QuickAddTaskType;
+  scheduledDate?: DateOnly;
+};
 
 type QuickAddDialogProps = {
   areas?: AreaDto[];
-  defaultCapture?: {
-    defaultItemType?: "date_task";
-    defaultScheduledDate?: DateOnly;
-  };
+  defaultCapture?: QuickAddDefaultCapture;
   onOpenChange: (open: boolean) => void;
   open: boolean;
 };
@@ -35,41 +38,65 @@ export function QuickAddDialog({
   const { t } = useTranslation();
   const data = usePlanningData();
   const { createCapture } = usePlanningMutations();
-  const [sourceText, setSourceText] = useState("");
-  const [targetItemType, setTargetItemType] = useState<ItemType | "auto">("auto");
+  const [taskName, setTaskName] = useState("");
+  const [note, setNote] = useState("");
+  const defaultTaskType = defaultCapture?.taskType ?? "none";
+  const defaultScheduledDate = defaultCapture?.scheduledDate ?? null;
+  const defaultAreaId = defaultCapture?.areaId ?? "";
+  const [taskType, setTaskType] = useState<QuickAddTaskType>(defaultTaskType);
+  const [scheduledDate, setScheduledDate] = useState<string | null>(
+    defaultScheduledDate,
+  );
+  const [plannedWorkDate, setPlannedWorkDate] = useState<string | null>(null);
   const [deadlineDate, setDeadlineDate] = useState<string | null>(null);
-  const [areaId, setAreaId] = useState("");
+  const [areaId, setAreaId] = useState(defaultAreaId);
+  const [ignoredFragments, setIgnoredFragments] = useState<QuickAddFragment[]>([]);
   const preview = useMemo(
     () =>
-      parseQuickAdd(sourceText, {
+      parseQuickAdd(taskName, {
+        ignoredFragments,
         locale: data.settings.locale,
         today: data.today,
         untitled: t("quickAdd.untitled"),
       }),
-    [data.settings.locale, data.today, sourceText, t],
+    [data.settings.locale, data.today, ignoredFragments, taskName, t],
   );
 
-  const effectiveTarget =
-    targetItemType === "auto"
-      ? (defaultCapture?.defaultItemType ?? preview.itemTypeSuggestion)
-      : targetItemType;
+  const effectiveTaskType = taskType === "none" ? "inbox" : taskType;
+  const resolvedScheduledDate =
+    taskType === "date_task"
+      ? (scheduledDate ?? preview.fields.scheduled_date ?? defaultCapture?.scheduledDate ?? "")
+      : "";
   const resolvedDeadlineDate =
-    effectiveTarget === "deadline_task" ? (deadlineDate ?? preview.fields.deadline_date ?? "") : "";
+    taskType === "deadline_task" ? (deadlineDate ?? preview.fields.deadline_date ?? "") : "";
+  const resolvedPlannedWorkDate = taskType === "deadline_task" ? (plannedWorkDate ?? "") : "";
+  const areaFallbackLabel = taskType === "idea" ? t("quickAdd.area.ideaPool") : t("nav.inbox");
+  const previewTitle = effectiveTaskType === "inbox" ? normalizeTaskName(taskName) : preview.cleanTitle;
+  const canSave =
+    taskName.trim().length > 0 &&
+    (taskType !== "date_task" || toDateOnly(resolvedScheduledDate) !== null) &&
+    (taskType !== "deadline_task" || toDateOnly(resolvedDeadlineDate) !== null);
 
-  const save = (mode: "inbox" | "suggestion") => {
+  const save = () => {
     createCapture({
       areaId: areaId === "" ? null : areaId,
-      defaultItemType: defaultCapture?.defaultItemType,
-      deadlineDate: effectiveTarget === "deadline_task" ? toDateOnly(resolvedDeadlineDate) : null,
-      defaultScheduledDate: defaultCapture?.defaultScheduledDate,
-      mode,
-      sourceText,
-      targetItemType: targetItemType === "auto" ? undefined : targetItemType,
+      ignoredFragments,
+      note: note.trim().length > 0 ? note : null,
+      plannedWorkDate:
+        effectiveTaskType === "deadline_task" ? toDateOnly(resolvedPlannedWorkDate) : null,
+      deadlineDate: effectiveTaskType === "deadline_task" ? toDateOnly(resolvedDeadlineDate) : null,
+      scheduledDate: effectiveTaskType === "date_task" ? toDateOnly(resolvedScheduledDate) : null,
+      sourceText: taskName,
+      targetItemType: effectiveTaskType,
     });
-    setSourceText("");
-    setTargetItemType("auto");
+    setTaskName("");
+    setNote("");
+    setTaskType(defaultTaskType);
+    setScheduledDate(defaultScheduledDate);
+    setPlannedWorkDate(null);
     setDeadlineDate(null);
-    setAreaId("");
+    setAreaId(defaultAreaId);
+    setIgnoredFragments([]);
     onOpenChange(false);
   };
 
@@ -81,49 +108,99 @@ export function QuickAddDialog({
       title={t("quickAdd.title")}
     >
       <div className={styles.dialogBody}>
-        <TextArea
-          label={t("quickAdd.source.label")}
-          onChange={(event) => setSourceText(event.target.value)}
-          placeholder={t("quickAdd.source.placeholder")}
-          rows={4}
-          value={sourceText}
+        <HighlightedTaskNameInput
+          fragments={preview.recognizedFragments}
+          label={t("quickAdd.taskName.label")}
+          onCancelFragment={(fragment) =>
+            setIgnoredFragments((current) => appendIgnoredFragment(current, fragment))
+          }
+          onChange={(value) => {
+            setTaskName(value);
+            setIgnoredFragments((current) =>
+              current.filter((fragment) => value.includes(fragment.text)),
+            );
+          }}
+          placeholder={t("quickAdd.taskName.placeholder")}
+          value={taskName}
         />
-        <Select
-          label={t("quickAdd.targetType.label")}
-          onChange={(event) => setTargetItemType(event.target.value as ItemType | "auto")}
-          value={targetItemType}
-        >
-          <option value="auto">{t("quickAdd.targetType.auto")}</option>
-          <option value="inbox">{t("item.type.inbox")}</option>
-          <option value="date_task">{t("item.type.dateTask")}</option>
-          <option value="deadline_task">{t("item.type.deadlineTask")}</option>
-          <option value="idea">{t("item.type.idea")}</option>
-        </Select>
-        <Select
-          label={t("area.picker.label")}
-          onChange={(event) => setAreaId(event.target.value)}
-          value={areaId}
-        >
-          <option value="">{t("area.picker.none")}</option>
-          {areas.map((area) => (
-            <option key={area.id} value={area.id}>
-              {area.name}
-            </option>
-          ))}
-        </Select>
-        {effectiveTarget === "deadline_task" ? (
+        <TextArea
+          label={t("quickAdd.description.label")}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder={t("quickAdd.description.placeholder")}
+          rows={3}
+          value={note}
+        />
+        <div className={styles.quickAddSelectRow}>
+          <Select
+            label={t("quickAdd.taskType.label")}
+            onChange={(event) => {
+              const nextTaskType = event.target.value as QuickAddTaskType;
+              setTaskType(nextTaskType);
+              if (nextTaskType !== "date_task") {
+                setScheduledDate(null);
+              }
+              if (nextTaskType !== "deadline_task") {
+                setDeadlineDate(null);
+                setPlannedWorkDate(null);
+              }
+            }}
+            value={taskType}
+          >
+            <option value="none">{t("quickAdd.taskType.none")}</option>
+            <option value="date_task">{t("item.type.dateTask")}</option>
+            <option value="deadline_task">{t("item.type.deadlineTask")}</option>
+            <option value="idea">{t("item.type.idea")}</option>
+          </Select>
+          <Select
+            label={t("area.picker.label")}
+            onChange={(event) => setAreaId(event.target.value)}
+            value={areaId}
+          >
+            <option value="">{areaFallbackLabel}</option>
+            {areas.map((area) => (
+              <option key={area.id} value={area.id}>
+                {area.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        {taskType === "date_task" ? (
           <TextInput
-            label={t("item.field.deadlineDate")}
-            onChange={(event) => setDeadlineDate(event.target.value)}
+            label={t("item.field.scheduledDate")}
+            onChange={(event) => setScheduledDate(event.target.value)}
             type="date"
-            value={resolvedDeadlineDate}
+            value={resolvedScheduledDate}
           />
+        ) : null}
+        {taskType === "deadline_task" ? (
+          <div className={styles.quickAddSelectRow}>
+            <TextInput
+              label={t("item.field.plannedWorkDate")}
+              onChange={(event) => setPlannedWorkDate(event.target.value)}
+              type="date"
+              value={resolvedPlannedWorkDate}
+            />
+            <TextInput
+              label={t("item.field.deadlineDate")}
+              onChange={(event) => setDeadlineDate(event.target.value)}
+              type="date"
+              value={resolvedDeadlineDate}
+            />
+          </div>
         ) : null}
         <PreviewList
           rows={[
-            [t("quickAdd.preview.title"), preview.cleanTitle],
-            [t("quickAdd.preview.type"), t(itemTypeToMessageKey(effectiveTarget))],
-            [t("quickAdd.preview.confidence"), t(`quickAdd.confidence.${preview.confidence}`)],
+            [t("quickAdd.preview.title"), previewTitle || t("quickAdd.untitled")],
+            [
+              t("quickAdd.preview.type"),
+              taskType === "none" ? t("quickAdd.taskType.none") : t(itemTypeToMessageKey(effectiveTaskType)),
+            ],
+            [
+              t("area.picker.label"),
+              areaId === ""
+                ? areaFallbackLabel
+                : (areas.find((area) => area.id === areaId)?.name ?? areaFallbackLabel),
+            ],
             [
               t("quickAdd.preview.fragments"),
               preview.recognizedFragments.map((fragment) => fragment.text).join(", ") || "-",
@@ -131,14 +208,153 @@ export function QuickAddDialog({
           ]}
         />
         <div className={styles.actions}>
-          <Button onClick={() => save("inbox")}>{t("quickAdd.saveInbox")}</Button>
-          <Button onClick={() => save("suggestion")} variant="primary">
-            {t("quickAdd.confirm")}
+          <Button disabled={!canSave} onClick={save} variant="primary">
+            {t("common.save")}
           </Button>
         </div>
       </div>
     </Dialog>
   );
+}
+
+function HighlightedTaskNameInput({
+  fragments,
+  label,
+  onCancelFragment,
+  onChange,
+  placeholder,
+  value,
+}: {
+  fragments: QuickAddFragment[];
+  label: string;
+  onCancelFragment: (fragment: QuickAddFragment) => void;
+  onChange: (value: string) => void;
+  placeholder: string;
+  value: string;
+}) {
+  const inputId = useId();
+  const ranges = useMemo(() => buildFragmentRanges(value, fragments), [fragments, value]);
+
+  return (
+    <div className={styles.highlightField}>
+      <label className={styles.highlightLabel} htmlFor={inputId}>
+        {label}
+      </label>
+      <span className={styles.highlightInputFrame}>
+        <span aria-hidden="true" className={styles.highlightMirror}>
+          {renderHighlightedValue(value, ranges, placeholder)}
+        </span>
+        <input
+          autoComplete="off"
+          id={inputId}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Backspace") {
+              return;
+            }
+
+            const input = event.currentTarget;
+            if (input.selectionStart === null || input.selectionStart !== input.selectionEnd) {
+              return;
+            }
+
+            const range = findRangeAtCursor(ranges, input.selectionStart);
+            if (!range) {
+              return;
+            }
+
+            event.preventDefault();
+            onCancelFragment(range.fragment);
+          }}
+          placeholder={placeholder}
+          type="text"
+          value={value}
+        />
+      </span>
+    </div>
+  );
+}
+
+type FragmentRange = {
+  end: number;
+  fragment: QuickAddFragment;
+  start: number;
+};
+
+function buildFragmentRanges(value: string, fragments: QuickAddFragment[]): FragmentRange[] {
+  const ranges: FragmentRange[] = [];
+  let searchStart = 0;
+
+  for (const fragment of fragments) {
+    const start = value.indexOf(fragment.text, searchStart);
+    if (start < 0) {
+      continue;
+    }
+
+    const end = start + fragment.text.length;
+    ranges.push({ end, fragment, start });
+    searchStart = end;
+  }
+
+  return ranges.sort((left, right) => left.start - right.start);
+}
+
+function findRangeAtCursor(ranges: FragmentRange[], cursor: number): FragmentRange | null {
+  return (
+    ranges.find((range) => cursor > range.start && cursor <= range.end) ??
+    ranges.find((range) => cursor === range.start) ??
+    null
+  );
+}
+
+function renderHighlightedValue(
+  value: string,
+  ranges: FragmentRange[],
+  placeholder: string,
+) {
+  if (value.length === 0) {
+    return <span className={styles.highlightPlaceholder}>{placeholder}</span>;
+  }
+
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+
+  for (const range of ranges) {
+    if (range.start > cursor) {
+      nodes.push(value.slice(cursor, range.start));
+    }
+    nodes.push(
+      <mark key={`${range.start}-${range.end}`}>{value.slice(range.start, range.end)}</mark>,
+    );
+    cursor = range.end;
+  }
+
+  if (cursor < value.length) {
+    nodes.push(value.slice(cursor));
+  }
+
+  return nodes;
+}
+
+function appendIgnoredFragment(
+  fragments: QuickAddFragment[],
+  nextFragment: QuickAddFragment,
+): QuickAddFragment[] {
+  if (
+    fragments.some(
+      (fragment) =>
+        fragment.text === nextFragment.text &&
+        fragment.normalizedValue === nextFragment.normalizedValue,
+    )
+  ) {
+    return fragments;
+  }
+
+  return [...fragments, nextFragment];
+}
+
+function normalizeTaskName(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 type AreaCreateDialogProps = {

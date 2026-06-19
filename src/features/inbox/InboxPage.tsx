@@ -12,6 +12,7 @@ import { usePlanningData } from "@/features/planning/usePlanningData";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { queryInboxRows } from "@/repositories/local-db/readModels";
 import type { LocalItemRow } from "@/domain/items/schemas";
+import { openQuickAdd } from "@/features/items/openQuickAdd";
 
 export function InboxPage() {
   const { t } = useTranslation();
@@ -36,7 +37,7 @@ export function InboxPage() {
           <EmptyState
             actionLabel={t("quickAdd.button")}
             description={t("empty.inbox.description")}
-            onAction={() => window.dispatchEvent(new CustomEvent("yasumi:quick-add"))}
+            onAction={() => openQuickAdd()}
             title={t("empty.inbox.title")}
           />
         }

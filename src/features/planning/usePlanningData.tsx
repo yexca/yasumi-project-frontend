@@ -40,6 +40,7 @@ import {
 import type { DateOnly } from "@/domain/time/dateOnly";
 import { validateStatusTransition } from "@/domain/transitions/status";
 import type { ItemActionId } from "@/features/items/itemPresentation";
+import type { QuickAddFragment } from "@/features/quick-add/parser";
 import { parseQuickAdd } from "@/features/quick-add/parser";
 import { useOptionalPowerSyncRuntime } from "@/features/sync/PowerSyncRuntimeProvider";
 import { resolveLocalLanguagePreference } from "@/i18n/localLanguagePreference";
@@ -124,7 +125,17 @@ export type PostponeInput = {
 
 export type QuickAddInput = {
   areaId?: string | null;
-  defaultItemType?: "date_task";
+  deadlineDate?: DateOnly | null;
+  ignoredFragments?: QuickAddFragment[];
+  note?: string | null;
+  plannedWorkDate?: DateOnly | null;
+  scheduledDate?: DateOnly | null;
+  sourceText: string;
+  targetItemType: ItemType;
+};
+
+export type LegacyQuickAddInput = {
+  areaId?: string | null;
   deadlineDate?: DateOnly | null;
   defaultScheduledDate?: DateOnly;
   mode: "inbox" | "suggestion";
@@ -798,23 +809,20 @@ function updateSettings(
 
 function createCapture(
   state: PlanningState,
-  input: QuickAddInput,
+  input: QuickAddInput | LegacyQuickAddInput,
   now: string,
 ): { state: PlanningState; result: MutationResult } {
   const preview = parseQuickAdd(input.sourceText, {
+    ignoredFragments: "ignoredFragments" in input ? input.ignoredFragments : undefined,
     locale: state.settings.locale,
     today: state.today,
   });
-  const itemType =
-    input.mode === "inbox" ? "inbox" : (input.targetItemType ?? preview.itemTypeSuggestion);
-  const effectiveItemType =
-    input.mode === "suggestion" &&
-    input.targetItemType === undefined &&
-    preview.confidence === "low" &&
-    input.defaultItemType
-      ? input.defaultItemType
-      : itemType;
   const captureTitle = input.sourceText.trim().replace(/\s+/g, " ") || "Untitled capture";
+  const effectiveItemType = getQuickAddItemType(input);
+  const manualScheduledDate = "scheduledDate" in input ? input.scheduledDate : null;
+  const manualPlannedWorkDate = "plannedWorkDate" in input ? input.plannedWorkDate : null;
+  const note = "note" in input ? input.note : null;
+  const title = effectiveItemType === "inbox" ? captureTitle : preview.cleanTitle;
   const row = normalizeItemRow({
     id: createId("item"),
     user_id: USER_ID,
@@ -829,15 +837,16 @@ function createCapture(
     updated_by_device_id: state.deviceId,
     revision: 0,
     item_type: effectiveItemType,
-    title: input.mode === "inbox" ? captureTitle : preview.cleanTitle,
-    note: null,
+    title: title.length > 0 ? title : captureTitle,
+    note: note ?? null,
     status: "active",
     area_id: input.areaId ?? null,
     scheduled_date:
       effectiveItemType === "date_task"
-        ? (preview.fields.scheduled_date ?? input.defaultScheduledDate ?? null)
+        ? (manualScheduledDate ?? preview.fields.scheduled_date ?? getLegacyDefaultScheduledDate(input))
         : null,
     scheduled_time_zone_mode: effectiveItemType === "date_task" ? "floating" : null,
+    planned_work_date: effectiveItemType === "deadline_task" ? (manualPlannedWorkDate ?? null) : null,
     deadline_date:
       effectiveItemType === "deadline_task"
         ? (input.deadlineDate ?? preview.fields.deadline_date ?? null)
@@ -867,6 +876,18 @@ function createCapture(
     },
     result: { ok: true, mutation },
   };
+}
+
+function getQuickAddItemType(input: QuickAddInput | LegacyQuickAddInput): ItemType {
+  if ("mode" in input) {
+    return input.mode === "inbox" ? "inbox" : (input.targetItemType ?? "inbox");
+  }
+
+  return input.targetItemType;
+}
+
+function getLegacyDefaultScheduledDate(input: QuickAddInput | LegacyQuickAddInput): DateOnly | null {
+  return "defaultScheduledDate" in input ? (input.defaultScheduledDate ?? null) : null;
 }
 
 function createArea(

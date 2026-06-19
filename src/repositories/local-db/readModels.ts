@@ -152,7 +152,10 @@ export function buildTodayViewModel(input: TodayBuildInput): TodayViewModel {
 
 export function queryInboxRows(items: LocalItemRow[]): LocalItemRow[] {
   return items
-    .filter((item) => isVisibleInNormalPlanning(item) && item.item_type === "inbox")
+    .filter(
+      (item) =>
+        isVisibleInNormalPlanning(item) && item.area_id === null && item.item_type !== "idea",
+    )
     .sort(sortByCreatedAt);
 }
 

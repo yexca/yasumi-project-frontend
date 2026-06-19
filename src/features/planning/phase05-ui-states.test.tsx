@@ -40,8 +40,8 @@ describe("phase 05 sync UI states", () => {
 
     await screen.findByRole("heading", { name: "Inbox", level: 2 });
     await user.click(firstButton("Quick Add"));
-    await user.type(await screen.findByLabelText("Source text"), "Call venue tomorrow");
-    await user.click(screen.getByRole("button", { name: "Save as Inbox" }));
+    await user.type(await screen.findByLabelText("Task name"), "Call venue tomorrow");
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("Call venue tomorrow")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Saved on this device (1)" })).toHaveLength(2);
@@ -62,11 +62,11 @@ describe("phase 05 sync UI states", () => {
     await screen.findByRole("heading", { name: "Inbox", level: 2 });
     await user.click(firstButton("Quick Add"));
     const dialog = screen.getByRole("dialog", { name: "Quick Add" });
-    await user.type(within(dialog).getByLabelText("Source text"), "Renew passport");
-    await user.selectOptions(within(dialog).getByLabelText("Create as"), "deadline_task");
+    await user.type(within(dialog).getByLabelText("Task name"), "Renew passport");
+    await user.selectOptions(within(dialog).getByLabelText("Task type"), "deadline_task");
     await user.clear(within(dialog).getByLabelText("Deadline date"));
     await user.type(within(dialog).getByLabelText("Deadline date"), "2026-07-12");
-    await user.click(screen.getByRole("button", { name: "Confirm suggestion" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     act(() => {
       window.history.pushState({}, "", "/deadlines");

@@ -49,14 +49,15 @@ describe("phase 04 pages and action surfaces", () => {
 
     await screen.findByRole("heading", { name: "Inbox", level: 2 });
     await user.click(firstButton("Quick Add"));
-    const sourceText = await screen.findByLabelText("Source text");
+    const sourceText = await screen.findByLabelText("Task name");
     await user.type(sourceText, "Deadline Send renewal decision by 2026-06-16");
 
     const dialog = screen.getByRole("dialog", { name: "Quick Add" });
     expect(dialog).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Create as")).toHaveValue("auto");
+    expect(within(dialog).getByLabelText("Task type")).toHaveValue("none");
+    await user.selectOptions(within(dialog).getByLabelText("Task type"), "deadline_task");
     expect(within(dialog).getByLabelText("Deadline date")).toHaveValue("2026-06-16");
-    expect(screen.getByRole("button", { name: "Save as Inbox" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
 
   it("allows Quick Add to create a deadline task with a manual deadline date", async () => {
@@ -70,11 +71,11 @@ describe("phase 04 pages and action surfaces", () => {
     await screen.findByRole("heading", { name: "Inbox", level: 2 });
     await user.click(firstButton("Quick Add"));
     const dialog = screen.getByRole("dialog", { name: "Quick Add" });
-    await user.type(within(dialog).getByLabelText("Source text"), "Plan tax submission");
-    await user.selectOptions(within(dialog).getByLabelText("Create as"), "deadline_task");
+    await user.type(within(dialog).getByLabelText("Task name"), "Plan tax submission");
+    await user.selectOptions(within(dialog).getByLabelText("Task type"), "deadline_task");
     await user.clear(within(dialog).getByLabelText("Deadline date"));
     await user.type(within(dialog).getByLabelText("Deadline date"), "2026-07-01");
-    await user.click(screen.getByRole("button", { name: "Confirm suggestion" }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
 
     act(() => {
       window.history.pushState({}, "", "/deadlines");
