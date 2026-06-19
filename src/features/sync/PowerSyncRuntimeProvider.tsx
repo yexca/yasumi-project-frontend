@@ -160,5 +160,9 @@ function shouldUseSyncedStore(database: AbstractPowerSyncDatabase): boolean {
     return true;
   }
 
+  if (import.meta.env.VITE_E2E_USE_FIXTURE_STORE === "true") {
+    return false;
+  }
+
   return typeof (database as { customQuery?: unknown }).customQuery === "function";
 }

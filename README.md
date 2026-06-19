@@ -4,22 +4,12 @@ Frontend workspace for Yasumi. Current implementation covers the MVP settings, l
 
 ## Start
 
-Use the reproducible environment under `env/`.
-
-```powershell
-.\env\npm.cmd install
-.\env\npm.cmd run dev
-```
-
-The local dev server now defaults to `http://127.0.0.1:7650`.
-
-## Docker Compose
-
-With the backend repository present at the sibling path `..\yasumi-project-backend`, you can start the release-style full stack directly from this frontend directory:
+Use Docker Compose as the default runtime for local work.
 
 ```powershell
 Copy-Item .env.example .env
 docker compose up -d --build
+docker compose up -d frontend-dev
 ```
 
 The frontend container/image naming now defaults to `yexca/yasumi-project-frontend:0.1.0`.
@@ -32,20 +22,22 @@ The frontend proxies backend API and PowerSync traffic through the same origin, 
 
 ## Checks
 
+Run verification inside the development container:
+
 ```powershell
-.\env\npm.cmd run typecheck
-.\env\npm.cmd run lint
-.\env\npm.cmd run format
-.\env\npm.cmd run test
-.\env\npm.cmd run test:component
-.\env\npm.cmd run build
+docker compose exec frontend-dev npm run typecheck
+docker compose exec frontend-dev npm run lint
+docker compose exec frontend-dev npm run format
+docker compose exec frontend-dev npm run test
+docker compose exec frontend-dev npm run test:component
+docker compose exec frontend-dev npm run build
 ```
 
 E2E tests are configured with Playwright:
 
 ```powershell
-.\env\npm.cmd exec playwright install
-.\env\npm.cmd run test:e2e
+docker compose exec frontend-dev npx playwright install
+docker compose exec frontend-dev npm run test:e2e
 ```
 
 ## Current Scope

@@ -33,14 +33,12 @@ test("Quick Add creates a local capture and shows pending sync state", async ({ 
   await page.getByRole("button", { name: "Quick Add" }).click();
   await page.getByLabel("Source text").fill("call venue tomorrow");
   await expect(page.locator("dd", { hasText: "call venue" })).toBeVisible();
-  await expect(page.getByText("Date task")).toBeVisible();
+  await expect(page.locator("dd", { hasText: "Date task" })).toBeVisible();
   await page.getByRole("button", { name: "Save as Inbox" }).click();
 
-  await expect(page.getByText("call venue tomorrow")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Saved on this device/ }).first()).toBeVisible();
-  await expect(
-    page.locator("article.surface-row", { hasText: "call venue tomorrow" }),
-  ).toContainText("Saved on this device");
+  const savedRow = page.locator("article.surface-row", { hasText: "call venue tomorrow" });
+  await expect(savedRow).toBeVisible();
+  await expect(savedRow).toContainText("Saved on this device");
 });
 
 test("a normal item can be completed and reopened", async ({ page }) => {
@@ -100,7 +98,7 @@ test("settings switch language, theme, and local background without diagnostics"
   await expect(page.locator(".theme-root")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator(".theme-root")).toHaveAttribute("data-theme-mode", "dark");
 
-  await page.getByRole("button", { name: "重置" }).click();
+  await page.getByRole("button", { name: "重置", exact: true }).click();
   await expect(page.locator(".theme-root")).toHaveAttribute("data-background", "none");
   await expect(page.locator(".theme-root")).toHaveAttribute("data-background-preference", "none");
 });

@@ -4,20 +4,21 @@ Use this guide to choose the right level of validation for a change.
 
 ## Default Command Set
 
-Use the project-pinned runtime from `env/`:
+Use Docker Compose as the default verification environment and run checks inside the `frontend-dev` container:
 
 ```powershell
-.\env\npm.cmd run typecheck
-.\env\npm.cmd run lint
-.\env\npm.cmd run test
-.\env\npm.cmd run test:component
-.\env\npm.cmd run build
+docker compose exec frontend-dev npm run typecheck
+docker compose exec frontend-dev npm run lint
+docker compose exec frontend-dev npm run test
+docker compose exec frontend-dev npm run test:component
+docker compose exec frontend-dev npm run build
 ```
 
 Add Playwright when route-level or end-to-end behavior changes:
 
 ```powershell
-.\env\npm.cmd run test:e2e
+docker compose exec frontend-dev npx playwright install
+docker compose exec frontend-dev npm run test:e2e
 ```
 
 ## Match Verification To Change Type

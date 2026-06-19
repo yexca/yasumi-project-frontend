@@ -1,6 +1,6 @@
 # Yasumi Frontend Environment
 
-The frontend is pinned to the Docker/dev-container runtime rather than a local machine setup.
+The frontend runs through Docker and dev containers. Treat containers as the source of truth for local development and verification.
 
 ## Runtime
 
@@ -8,16 +8,6 @@ The frontend is pinned to the Docker/dev-container runtime rather than a local m
 - npm: `11.x`
 - Dev/build base image: `node:24.16.0-bookworm-slim`
 - Production runtime image: `nginx:1.27-alpine`
-
-## Local Windows Runtime
-
-Use the checked-in Node runtime instead of a machine-level Node install:
-
-```powershell
-.\env\npm.cmd install
-.\env\npm.cmd run dev
-.\env\npm.cmd run typecheck
-```
 
 ## Docker
 
@@ -39,17 +29,29 @@ For full-stack release validation from this frontend directory, copy `.env.examp
 
 ```bash
 docker compose up -d --build
+docker compose up -d frontend-dev
 ```
 
 This Compose file builds the backend from `../yasumi-project-backend` and exposes the app on `http://127.0.0.1:7650`. API and PowerSync traffic are forwarded through the frontend container, so you only need the single frontend port on the host.
 
 By default, the Compose frontend image name is `yexca/yasumi-project-frontend:0.1.0`, configurable through `.env`.
 
+Run project checks inside the development container:
+
+```bash
+docker compose exec frontend-dev npm run typecheck
+docker compose exec frontend-dev npm run lint
+docker compose exec frontend-dev npm run test
+docker compose exec frontend-dev npm run test:component
+docker compose exec frontend-dev npm run build
+docker compose exec frontend-dev npm run test:e2e
+```
+
 ## Service Ports
 
 - Frontend production container: `7650` inside the container, mapped to host `7650` by default
-- Frontend dev server: `7650`
-- Frontend preview/E2E support: `4175`
+- Frontend dev container shell: no default HTTP port
+- Frontend dev server and Playwright base URL: `4175`
 - Backend API: internal to Compose on `7659`
 - PowerSync service: internal to Compose on `8080`
 

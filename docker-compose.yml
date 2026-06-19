@@ -92,6 +92,28 @@ services:
       powersync:
         condition: service_started
 
+  frontend-dev:
+    build:
+      context: .
+      dockerfile: env/Dockerfile
+      target: dev
+    working_dir: /workspace
+    environment:
+      VITE_BACKEND_BASE_URL: ${VITE_BACKEND_BASE_URL:-/api}
+      VITE_POWERSYNC_ENDPOINT: ${VITE_POWERSYNC_ENDPOINT:-/powersync}
+    volumes:
+      - .:/workspace
+      - ../docs/original-development-docs:/docs/original-development-docs:ro
+      - yasumi-frontend-node-modules:/workspace/node_modules
+    ports:
+      - "${YASUMI_FRONTEND_DEV_HOST_PORT:-4175}:4175"
+    depends_on:
+      api:
+        condition: service_healthy
+      powersync:
+        condition: service_started
+    command: ["sh", "-c", "npm ci && tail -f /dev/null"]
+
   powersync:
     image: journeyapps/powersync-service:latest
     command: ["start", "-r", "unified"]
@@ -125,3 +147,4 @@ services:
 volumes:
   yasumi-postgres-data:
   yasumi-powersync-mongo-data:
+  yasumi-frontend-node-modules:

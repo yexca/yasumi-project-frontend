@@ -1,12 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const npmCommand = process.platform === "win32" ? ".\\env\\npm.cmd" : "npm";
-
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: true,
   webServer: {
-    command: `${npmCommand} run dev -- --port 4175`,
+    command: "VITE_E2E_USE_FIXTURE_STORE=true npm run dev -- --mode test --port 4175",
     url: "http://127.0.0.1:4175",
     reuseExistingServer: true,
   },

@@ -17,7 +17,7 @@ describe("App", () => {
     expect(screen.getAllByRole("button", { name: "Synced" })).toHaveLength(2);
   });
 
-  it("renders a placeholder for each MVP route", async () => {
+  it("renders the archive route inside the app shell", async () => {
     cleanup();
     window.history.pushState({}, "", "/archive");
     seedAuthSession();
@@ -26,7 +26,7 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "Archive", level: 2 })).toBeInTheDocument();
     expect(
-      screen.getAllByText("Recoverable history and archived work will appear here.").length,
+      screen.getAllByText("Review archived, abandoned, and recoverable work history.").length,
     ).toBeGreaterThan(0);
   });
 
