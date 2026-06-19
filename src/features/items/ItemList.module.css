@@ -293,7 +293,6 @@
     transform: none;
     animation: sheetUp 180ms ease-out;
   }
-
 }
 
 @media (max-width: 640px) {

@@ -56,7 +56,8 @@ export const messages: Record<LanguageCode, Messages> = {
     "page.ideas.description": "Ideas stay visible without becoming failed tasks.",
     "page.areas.description": "Review areas and the work connected to each one.",
     "page.areaDetail.description": "Review the work collected in {areaId}.",
-    "page.completed.description": "Review completed work and reopen anything that needs another pass.",
+    "page.completed.description":
+      "Review completed work and reopen anything that needs another pass.",
     "page.archive.description": "Review archived, abandoned, and recoverable work history.",
     "page.settings.description": "Manage language, timezone, and display preferences.",
     "settings.appearance.title": "Appearance",
@@ -107,11 +108,9 @@ export const messages: Record<LanguageCode, Messages> = {
     "empty.areaDetail.description":
       "Assigned items stay here in the same order as other planning views.",
     "empty.completed.title": "No completed items yet",
-    "empty.completed.description":
-      "Completed work stays here with an explicit reopen action.",
+    "empty.completed.description": "Completed work stays here with an explicit reopen action.",
     "empty.archive.title": "Nothing archived or recoverable",
-    "empty.archive.description":
-      "Archived, abandoned, and recoverable deleted items stay here.",
+    "empty.archive.description": "Archived, abandoned, and recoverable deleted items stay here.",
     "common.cancel": "Cancel",
     "common.confirm": "Confirm",
     "common.save": "Save",

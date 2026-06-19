@@ -11,8 +11,9 @@ import { addDays, assertDateOnly, isInstant } from "@/domain/time/dateOnly";
 import type { HiddenReason } from "@/domain/constants/shared";
 import { readContractFixture } from "@/test/contractFixtures";
 
-const settingsFixture =
-  readContractFixture<Fixture<SettingsScenario>>("domain/settings-defaults.json");
+const settingsFixture = readContractFixture<Fixture<SettingsScenario>>(
+  "domain/settings-defaults.json",
+);
 const statusFixture = readContractFixture<
   Fixture<TransitionScenario | InvalidTransitionScenario | MetadataScenario>
 >("domain/status-transitions.json");
@@ -80,10 +81,7 @@ describe("phase 03 domain contracts", () => {
   it("builds settings defaults from contract fixtures", () => {
     for (const scenario of settingsFixture.scenarios) {
       expect(
-        buildDefaultUserSettings(
-          scenario.input.language,
-          scenario.context.device_time_zone,
-        ),
+        buildDefaultUserSettings(scenario.input.language, scenario.context.device_time_zone),
       ).toEqual(scenario.expected.settings);
     }
   });

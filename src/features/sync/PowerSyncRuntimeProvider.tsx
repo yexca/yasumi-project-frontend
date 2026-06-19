@@ -1,6 +1,13 @@
 import { PowerSyncContext, useStatus as usePowerSyncStatus } from "@powersync/react";
 import type { AbstractPowerSyncDatabase, SyncStatus } from "@powersync/web";
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type PropsWithChildren,
+} from "react";
 
 import { useAuth } from "@/features/auth/AuthProvider";
 import { createYasumiPowerSyncConnector } from "@/repositories/powersync/connector";
@@ -108,7 +115,8 @@ export function PowerSyncRuntimeProvider({ children }: PropsWithChildren) {
     : status === "blocked"
       ? "auth_blocked"
       : status === "signed_in"
-        ? connectionAttempt.connectionKey === buildConnectionKey(session.accessToken, clientVersion, deviceId)
+        ? connectionAttempt.connectionKey ===
+          buildConnectionKey(session.accessToken, clientVersion, deviceId)
           ? connectionAttempt.lifecycleState
           : "connecting"
         : "idle";

@@ -68,4 +68,3 @@ PostgreSQL evidence for the same account:
 - `vite build`: passed.
 
 `vite build` reports an expected warning that `ItemDialogs.tsx` is both dynamically and statically imported. The static import is intentional so Quick Add remains available after the app is already loaded and the browser goes offline.
-

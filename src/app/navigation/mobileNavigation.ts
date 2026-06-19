@@ -111,7 +111,8 @@ function persistMobileNavSlots(slots: MobileNavPath[]) {
 
 function normalizeMobileNavSlots(value: unknown[]): MobileNavPath[] {
   const next = value.filter(
-    (entry): entry is MobileNavPath => typeof entry === "string" && VALID_PATHS.has(entry as MobileNavPath),
+    (entry): entry is MobileNavPath =>
+      typeof entry === "string" && VALID_PATHS.has(entry as MobileNavPath),
   );
   const unique: MobileNavPath[] = [];
 

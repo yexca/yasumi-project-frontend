@@ -1,10 +1,7 @@
 import { Image, KeyRound, RotateCcw, Save } from "lucide-react";
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
-import {
-  getMobileNavSlotOptions,
-  useMobileNavSlots,
-} from "@/app/navigation/mobileNavigation";
+import { getMobileNavSlotOptions, useMobileNavSlots } from "@/app/navigation/mobileNavigation";
 import { Button } from "@/components/primitives/Button";
 import { SegmentedControl } from "@/components/primitives/ChoiceControls";
 import { Select, TextInput } from "@/components/primitives/Field";

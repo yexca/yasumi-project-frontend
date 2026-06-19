@@ -146,7 +146,9 @@ export function AuthPage() {
             </button>
           </div>
           <form className={styles.form} onSubmit={(event) => void submit(event)}>
-            {mode === "register" ? <p className={styles.requiredNote}>{t("auth.requiredNote")}</p> : null}
+            {mode === "register" ? (
+              <p className={styles.requiredNote}>{t("auth.requiredNote")}</p>
+            ) : null}
             {mode === "login" ? (
               <TextInput
                 autoComplete="username"

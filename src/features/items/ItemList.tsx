@@ -450,7 +450,9 @@ function useItemDetailContent({
         <div className={styles.noteFeedback} data-save-state={saveState}>
           <span />
         </div>
-        {saveState === "saved" ? <p className={styles.noteState}>{t("item.detail.saved")}</p> : null}
+        {saveState === "saved" ? (
+          <p className={styles.noteState}>{t("item.detail.saved")}</p>
+        ) : null}
         <dl className={styles.detailList}>
           <DetailRow label={t("item.field.status")} value={t(`item.state.${item.status}`)} />
           <DetailRow label={t("area.picker.label")} value={areaName} />

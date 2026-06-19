@@ -924,7 +924,10 @@ async function insertItem(
   );
 }
 
-async function insertArea(tx: Pick<AbstractPowerSyncDatabase, "execute">, row: AreaDto): Promise<void> {
+async function insertArea(
+  tx: Pick<AbstractPowerSyncDatabase, "execute">,
+  row: AreaDto,
+): Promise<void> {
   await tx.execute(
     `INSERT INTO areas (
       id, user_id, archived_at, client_updated_at, created_at, created_by_device_id, deleted_at,

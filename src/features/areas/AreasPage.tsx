@@ -33,7 +33,10 @@ export function AreasPage() {
   return (
     <PageFrame
       actions={
-        <Button icon={<Plus aria-hidden="true" size={16} />} onClick={() => setCreateAreaOpen(true)}>
+        <Button
+          icon={<Plus aria-hidden="true" size={16} />}
+          onClick={() => setCreateAreaOpen(true)}
+        >
           {t("area.action.create")}
         </Button>
       }
