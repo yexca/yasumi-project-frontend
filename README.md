@@ -52,7 +52,7 @@ docker compose exec frontend-dev npm run test:e2e
 - Design tokens, themes, compact primitives, layout primitives, and background-aware surface behavior.
 - Shared domain constants, enum validators, date-only helpers, status transitions, idempotency keys, DTO schemas, local row normalization, repository interfaces, and local read-model helpers.
 - Shared planning pages for Today, Inbox, Upcoming, Deadlines, Idea Pool, Areas, Completed, Archive/History, and Settings.
-- Dense item rows with left-side completion/reopen controls, Inbox completion disabled state, undo completion toast, row selection, desktop right-side markdown-first detail pane, mobile bottom-sheet detail view, item action menus, Quick Add, classification, postpone/review date, item editor/detail, area deletion, and recurring template dialogs.
+- Dense item rows with left-side completion/reopen controls, Inbox completion disabled state, undo completion toast, row selection, desktop right-side markdown-first detail pane, mobile bottom-sheet detail view, item action menus, Todoist-style Quick Add with parsed date highlighting, task type and area capture, classification, postpone/review date, item editor/detail, area deletion, and recurring template dialogs.
 - Settings cleanup hides fixed/derived fields, uses common timezone choices for Shanghai, Tokyo, London, and New York, and includes personal display name, password change, and weather city controls.
 - Strict TypeScript, linting, formatting, unit/component tests, E2E configuration, Dockerfile, and dev container setup.
 
