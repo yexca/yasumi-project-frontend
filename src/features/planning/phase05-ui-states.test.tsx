@@ -78,6 +78,36 @@ describe("phase 05 sync UI states", () => {
     expect(await screen.findByText("Renew passport")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Saved on this device (1)" })).toHaveLength(2);
   });
+
+  it("lets parsed dates override the Today Quick Add baseline", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
+    window.history.pushState({}, "", "/today");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Today", level: 2 });
+    await user.click(firstButton("Quick Add"));
+    const dialog = screen.getByRole("dialog", { name: "Quick Add" });
+
+    expect(within(dialog).getByLabelText("Scheduled date")).toHaveValue("2026-06-14");
+    await user.type(within(dialog).getByLabelText("Task name"), "tomorrow have a meeting");
+    expect(within(dialog).getByLabelText("Scheduled date")).toHaveValue("2026-06-15");
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    act(() => {
+      window.history.pushState({}, "", "/upcoming");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(await screen.findByText("have a meeting")).toBeInTheDocument();
+    expect(screen.getAllByText("2026-06-15").length).toBeGreaterThan(0);
+  });
 });
 
 function firstButton(name: string): HTMLElement {

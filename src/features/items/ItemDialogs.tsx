@@ -45,9 +45,7 @@ export function QuickAddDialog({
   const defaultScheduledDate = defaultCapture?.scheduledDate ?? null;
   const defaultAreaId = defaultCapture?.areaId ?? "";
   const [taskType, setTaskType] = useState<QuickAddTaskTypeSelection>(defaultTaskType);
-  const [scheduledDate, setScheduledDate] = useState<string | null>(
-    defaultScheduledDate,
-  );
+  const [manualScheduledDate, setManualScheduledDate] = useState<string | null>(null);
   const [plannedWorkDate, setPlannedWorkDate] = useState<string | null>(null);
   const [deadlineDate, setDeadlineDate] = useState<string | null>(null);
   const [areaId, setAreaId] = useState(defaultAreaId);
@@ -66,7 +64,7 @@ export function QuickAddDialog({
   const effectiveTaskType = resolveEffectiveQuickAddType(taskType, preview.itemTypeSuggestion);
   const resolvedScheduledDate =
     effectiveTaskType === "date_task"
-      ? (scheduledDate ?? preview.fields.scheduled_date ?? defaultCapture?.scheduledDate ?? "")
+      ? (manualScheduledDate ?? preview.fields.scheduled_date ?? defaultScheduledDate ?? "")
       : "";
   const resolvedDeadlineDate =
     effectiveTaskType === "deadline_task"
@@ -98,7 +96,7 @@ export function QuickAddDialog({
     setTaskName("");
     setNote("");
     setTaskType(defaultTaskType);
-    setScheduledDate(defaultScheduledDate);
+    setManualScheduledDate(null);
     setPlannedWorkDate(null);
     setDeadlineDate(null);
     setAreaId(defaultAreaId);
@@ -143,7 +141,7 @@ export function QuickAddDialog({
               const nextTaskType = event.target.value as QuickAddTaskType;
               setTaskType(nextTaskType);
               if (nextTaskType !== "date_task") {
-                setScheduledDate(null);
+                setManualScheduledDate(null);
               }
               if (nextTaskType !== "deadline_task") {
                 setDeadlineDate(null);
@@ -173,7 +171,7 @@ export function QuickAddDialog({
         {effectiveTaskType === "date_task" ? (
           <TextInput
             label={t("item.field.scheduledDate")}
-            onChange={(event) => setScheduledDate(event.target.value)}
+            onChange={(event) => setManualScheduledDate(event.target.value)}
             type="date"
             value={resolvedScheduledDate}
           />
