@@ -15,6 +15,7 @@ import styles from "./ItemDialogs.module.css";
 
 type ClassificationTarget = "date_task" | "deadline_task" | "idea" | "recurring_template";
 type QuickAddTaskType = "none" | "date_task" | "deadline_task" | "idea";
+type QuickAddTaskTypeSelection = "auto" | QuickAddTaskType;
 
 export type QuickAddDefaultCapture = {
   areaId?: string | null;
@@ -40,10 +41,10 @@ export function QuickAddDialog({
   const { createCapture } = usePlanningMutations();
   const [taskName, setTaskName] = useState("");
   const [note, setNote] = useState("");
-  const defaultTaskType = defaultCapture?.taskType ?? "none";
+  const defaultTaskType: QuickAddTaskTypeSelection = defaultCapture?.taskType ?? "auto";
   const defaultScheduledDate = defaultCapture?.scheduledDate ?? null;
   const defaultAreaId = defaultCapture?.areaId ?? "";
-  const [taskType, setTaskType] = useState<QuickAddTaskType>(defaultTaskType);
+  const [taskType, setTaskType] = useState<QuickAddTaskTypeSelection>(defaultTaskType);
   const [scheduledDate, setScheduledDate] = useState<string | null>(
     defaultScheduledDate,
   );
@@ -62,20 +63,25 @@ export function QuickAddDialog({
     [data.settings.locale, data.today, ignoredFragments, taskName, t],
   );
 
-  const effectiveTaskType = taskType === "none" ? "inbox" : taskType;
+  const effectiveTaskType = resolveEffectiveQuickAddType(taskType, preview.itemTypeSuggestion);
   const resolvedScheduledDate =
-    taskType === "date_task"
+    effectiveTaskType === "date_task"
       ? (scheduledDate ?? preview.fields.scheduled_date ?? defaultCapture?.scheduledDate ?? "")
       : "";
   const resolvedDeadlineDate =
-    taskType === "deadline_task" ? (deadlineDate ?? preview.fields.deadline_date ?? "") : "";
-  const resolvedPlannedWorkDate = taskType === "deadline_task" ? (plannedWorkDate ?? "") : "";
-  const areaFallbackLabel = taskType === "idea" ? t("quickAdd.area.ideaPool") : t("nav.inbox");
-  const previewTitle = effectiveTaskType === "inbox" ? normalizeTaskName(taskName) : preview.cleanTitle;
+    effectiveTaskType === "deadline_task"
+      ? (deadlineDate ?? preview.fields.deadline_date ?? "")
+      : "";
+  const resolvedPlannedWorkDate =
+    effectiveTaskType === "deadline_task" ? (plannedWorkDate ?? "") : "";
+  const areaFallbackLabel =
+    effectiveTaskType === "idea" ? t("quickAdd.area.ideaPool") : t("nav.inbox");
+  const previewTitle =
+    effectiveTaskType === "inbox" ? normalizeTaskName(taskName) : preview.cleanTitle;
   const canSave =
     taskName.trim().length > 0 &&
-    (taskType !== "date_task" || toDateOnly(resolvedScheduledDate) !== null) &&
-    (taskType !== "deadline_task" || toDateOnly(resolvedDeadlineDate) !== null);
+    (effectiveTaskType !== "date_task" || toDateOnly(resolvedScheduledDate) !== null) &&
+    (effectiveTaskType !== "deadline_task" || toDateOnly(resolvedDeadlineDate) !== null);
 
   const save = () => {
     createCapture({
@@ -144,7 +150,7 @@ export function QuickAddDialog({
                 setPlannedWorkDate(null);
               }
             }}
-            value={taskType}
+            value={taskType === "auto" ? "none" : taskType}
           >
             <option value="none">{t("quickAdd.taskType.none")}</option>
             <option value="date_task">{t("item.type.dateTask")}</option>
@@ -164,7 +170,7 @@ export function QuickAddDialog({
             ))}
           </Select>
         </div>
-        {taskType === "date_task" ? (
+        {effectiveTaskType === "date_task" ? (
           <TextInput
             label={t("item.field.scheduledDate")}
             onChange={(event) => setScheduledDate(event.target.value)}
@@ -172,7 +178,7 @@ export function QuickAddDialog({
             value={resolvedScheduledDate}
           />
         ) : null}
-        {taskType === "deadline_task" ? (
+        {effectiveTaskType === "deadline_task" ? (
           <div className={styles.quickAddSelectRow}>
             <TextInput
               label={t("item.field.plannedWorkDate")}
@@ -193,7 +199,9 @@ export function QuickAddDialog({
             [t("quickAdd.preview.title"), previewTitle || t("quickAdd.untitled")],
             [
               t("quickAdd.preview.type"),
-              taskType === "none" ? t("quickAdd.taskType.none") : t(itemTypeToMessageKey(effectiveTaskType)),
+              effectiveTaskType === "inbox"
+                ? t("quickAdd.taskType.none")
+                : t(itemTypeToMessageKey(effectiveTaskType)),
             ],
             [
               t("area.picker.label"),
@@ -351,6 +359,17 @@ function appendIgnoredFragment(
   }
 
   return [...fragments, nextFragment];
+}
+
+function resolveEffectiveQuickAddType(
+  taskType: QuickAddTaskTypeSelection,
+  suggestion: "date_task" | "deadline_task" | "idea" | "inbox",
+) {
+  if (taskType === "auto") {
+    return suggestion;
+  }
+
+  return taskType === "none" ? "inbox" : taskType;
 }
 
 function normalizeTaskName(value: string): string {

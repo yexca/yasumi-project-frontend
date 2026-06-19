@@ -40,10 +40,12 @@ describe("phase 05 sync UI states", () => {
 
     await screen.findByRole("heading", { name: "Inbox", level: 2 });
     await user.click(firstButton("Quick Add"));
-    await user.type(await screen.findByLabelText("Task name"), "Call venue tomorrow");
+    await user.type(await screen.findByLabelText("Task name"), "tomorrow have a meeting");
+    const dialog = screen.getByRole("dialog", { name: "Quick Add" });
+    expect(within(dialog).getByText("Date task", { selector: "dd" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByText("Call venue tomorrow")).toBeInTheDocument();
+    expect(await screen.findByText("have a meeting")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Saved on this device (1)" })).toHaveLength(2);
     expect(screen.getByText("Saved on this device")).toBeInTheDocument();
   });
