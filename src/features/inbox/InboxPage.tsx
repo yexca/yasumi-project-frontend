@@ -13,6 +13,7 @@ import { useTranslation } from "@/i18n/I18nProvider";
 import { queryInboxRows } from "@/repositories/local-db/readModels";
 import type { LocalItemRow } from "@/domain/items/schemas";
 import { openQuickAdd } from "@/features/items/openQuickAdd";
+import { InlineQuickAdd } from "@/features/items/InlineQuickAdd";
 
 export function InboxPage() {
   const { t } = useTranslation();
@@ -31,6 +32,7 @@ export function InboxPage() {
       itemsForDetail={rows}
       title={t("nav.inbox")}
     >
+      <InlineQuickAdd areas={data.areas} />
       <ItemSection
         areas={data.areas}
         empty={

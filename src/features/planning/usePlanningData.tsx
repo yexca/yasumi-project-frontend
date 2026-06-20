@@ -126,6 +126,7 @@ export type PostponeInput = {
 export type QuickAddInput = {
   areaId?: string | null;
   deadlineDate?: DateOnly | null;
+  defaultScheduledDate?: DateOnly | null;
   ignoredFragments?: QuickAddFragment[];
   note?: string | null;
   plannedWorkDate?: DateOnly | null;

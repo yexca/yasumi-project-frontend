@@ -21,9 +21,17 @@ export function Menu({ children, trigger }: MenuProps) {
   );
 }
 
-export function MenuItem({ children, onSelect }: { children: ReactNode; onSelect?: () => void }) {
+export function MenuItem({
+  children,
+  disabled = false,
+  onSelect,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  onSelect?: () => void;
+}) {
   return (
-    <RadixMenu.Item className={styles.item} onSelect={onSelect}>
+    <RadixMenu.Item className={styles.item} disabled={disabled} onSelect={onSelect}>
       {children}
     </RadixMenu.Item>
   );

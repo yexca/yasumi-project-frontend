@@ -108,6 +108,47 @@ describe("phase 05 sync UI states", () => {
     expect(await screen.findByText("have a meeting")).toBeInTheDocument();
     expect(screen.getAllByText("2026-06-15").length).toBeGreaterThan(0);
   });
+
+  it("creates from the Today inline add while letting parsed dates override today", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
+    window.history.pushState({}, "", "/today");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Today", level: 2 });
+    await user.type(screen.getByLabelText("Task title"), "tomorrow inline meeting{Enter}");
+
+    act(() => {
+      window.history.pushState({}, "", "/upcoming");
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+
+    expect(await screen.findByText("inline meeting")).toBeInTheDocument();
+    expect(screen.getAllByText("2026-06-15").length).toBeGreaterThan(0);
+  });
+
+  it("creates deadline tasks from the Deadlines inline add by default", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      configurable: true,
+      value: true,
+    });
+    window.history.pushState({}, "", "/deadlines");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Deadlines", level: 2 });
+    await user.type(screen.getByLabelText("Task title"), "Inline passport renewal{Enter}");
+
+    expect(await screen.findByText("Inline passport renewal")).toBeInTheDocument();
+    expect(screen.getAllByText("2026-06-14").length).toBeGreaterThan(0);
+  });
 });
 
 function firstButton(name: string): HTMLElement {

@@ -13,6 +13,7 @@ import type { LocalItemRow } from "@/domain/items/schemas";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { queryDeadlineRows } from "@/repositories/local-db/readModels";
 import { openQuickAdd } from "@/features/items/openQuickAdd";
+import { InlineQuickAdd } from "@/features/items/InlineQuickAdd";
 
 export function DeadlinesPage() {
   const { t } = useTranslation();
@@ -31,6 +32,15 @@ export function DeadlinesPage() {
       itemsForDetail={rows}
       title={t("nav.deadlines")}
     >
+      <InlineQuickAdd
+        areas={data.areas}
+        defaultCapture={{
+          taskType: "deadline_task",
+          deadlineDate: data.today,
+          preserveTaskType: true,
+        }}
+        key={data.today}
+      />
       <ItemSection
         areas={data.areas}
         empty={

@@ -15,6 +15,7 @@ import type { LocalItemRow } from "@/domain/items/schemas";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { queryUpcomingRows } from "@/repositories/local-db/readModels";
 import { openQuickAdd } from "@/features/items/openQuickAdd";
+import { InlineQuickAdd } from "@/features/items/InlineQuickAdd";
 
 export function UpcomingPage() {
   const { t } = useTranslation();
@@ -43,6 +44,7 @@ export function UpcomingPage() {
       itemsForDetail={rows}
       title={t("nav.upcoming")}
     >
+      <InlineQuickAdd areas={data.areas} />
       {groups.length > 0 ? (
         groups.map(([date, items]) => (
           <ItemSection

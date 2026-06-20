@@ -13,6 +13,7 @@ import { useTranslation } from "@/i18n/I18nProvider";
 import { buildTodayViewModel } from "@/repositories/local-db/readModels";
 import type { LocalItemRow } from "@/domain/items/schemas";
 import { openQuickAdd } from "@/features/items/openQuickAdd";
+import { InlineQuickAdd } from "@/features/items/InlineQuickAdd";
 
 export function TodayPage() {
   const { t } = useTranslation();
@@ -46,6 +47,11 @@ export function TodayPage() {
       itemsForDetail={visibleSections.flatMap((section) => section.items)}
       title={t("nav.today")}
     >
+      <InlineQuickAdd
+        areas={data.areas}
+        defaultCapture={{ taskType: "date_task", scheduledDate: data.today }}
+        key={data.today}
+      />
       {visibleSections.length > 0 ? (
         visibleSections.map((section) => (
           <ItemSection

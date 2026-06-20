@@ -13,6 +13,7 @@ import { usePlanningData } from "@/features/planning/usePlanningData";
 import type { LocalItemRow } from "@/domain/items/schemas";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { queryAreaItemRows } from "@/repositories/local-db/readModels";
+import { InlineQuickAdd } from "@/features/items/InlineQuickAdd";
 
 export function AreaDetailPage() {
   const { areaId } = useParams();
@@ -33,6 +34,11 @@ export function AreaDetailPage() {
       itemsForDetail={rows}
       title={area?.name ?? t("nav.areas")}
     >
+      <InlineQuickAdd
+        areas={data.areas}
+        defaultCapture={{ areaId: areaId ?? null }}
+        key={areaId ?? "area-detail"}
+      />
       <ItemSection
         areas={data.areas}
         empty={

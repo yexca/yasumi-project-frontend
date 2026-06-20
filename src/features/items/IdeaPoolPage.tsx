@@ -13,6 +13,7 @@ import type { LocalItemRow } from "@/domain/items/schemas";
 import { useTranslation } from "@/i18n/I18nProvider";
 import { queryIdeaRows } from "@/repositories/local-db/readModels";
 import { openQuickAdd } from "@/features/items/openQuickAdd";
+import { InlineQuickAdd } from "@/features/items/InlineQuickAdd";
 
 export function IdeaPoolPage() {
   const { t } = useTranslation();
@@ -34,6 +35,10 @@ export function IdeaPoolPage() {
       itemsForDetail={rows}
       title={t("nav.ideas")}
     >
+      <InlineQuickAdd
+        areas={data.areas}
+        defaultCapture={{ taskType: "idea", preserveTaskType: true }}
+      />
       {rows.length > 0 ? (
         <>
           <ItemSection
