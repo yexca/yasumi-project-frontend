@@ -82,6 +82,10 @@ export function QuickAddDialog({
     (effectiveTaskType !== "deadline_task" || toDateOnly(resolvedDeadlineDate) !== null);
 
   const save = () => {
+    if (!canSave) {
+      return;
+    }
+
     createCapture({
       areaId: areaId === "" ? null : areaId,
       ignoredFragments,
@@ -111,7 +115,13 @@ export function QuickAddDialog({
       open={open}
       title={t("quickAdd.title")}
     >
-      <div className={styles.dialogBody}>
+      <form
+        className={styles.dialogBody}
+        onSubmit={(event) => {
+          event.preventDefault();
+          save();
+        }}
+      >
         <HighlightedTaskNameInput
           fragments={preview.recognizedFragments}
           label={t("quickAdd.taskName.label")}
@@ -214,11 +224,11 @@ export function QuickAddDialog({
           ]}
         />
         <div className={styles.actions}>
-          <Button disabled={!canSave} onClick={save} variant="primary">
+          <Button disabled={!canSave} type="submit" variant="primary">
             {t("common.save")}
           </Button>
         </div>
-      </div>
+      </form>
     </Dialog>
   );
 }
@@ -313,11 +323,7 @@ function findRangeAtCursor(ranges: FragmentRange[], cursor: number): FragmentRan
   );
 }
 
-function renderHighlightedValue(
-  value: string,
-  ranges: FragmentRange[],
-  placeholder: string,
-) {
+function renderHighlightedValue(value: string, ranges: FragmentRange[], placeholder: string) {
   if (value.length === 0) {
     return <span className={styles.highlightPlaceholder}>{placeholder}</span>;
   }
@@ -383,6 +389,13 @@ export function AreaCreateDialog({ onOpenChange, open }: AreaCreateDialogProps) 
   const { t } = useTranslation();
   const { createArea } = usePlanningMutations();
   const [name, setName] = useState("");
+  const save = () => {
+    const result = createArea({ name });
+    if (result.ok) {
+      setName("");
+      onOpenChange(false);
+    }
+  };
 
   return (
     <Dialog
@@ -391,7 +404,13 @@ export function AreaCreateDialog({ onOpenChange, open }: AreaCreateDialogProps) 
       open={open}
       title={t("area.create.title")}
     >
-      <div className={styles.dialogBody}>
+      <form
+        className={styles.dialogBody}
+        onSubmit={(event) => {
+          event.preventDefault();
+          save();
+        }}
+      >
         <TextInput
           label={t("area.field.name")}
           onChange={(event) => setName(event.target.value)}
@@ -402,20 +421,11 @@ export function AreaCreateDialog({ onOpenChange, open }: AreaCreateDialogProps) 
           <DialogClose asChild>
             <Button>{t("common.cancel")}</Button>
           </DialogClose>
-          <Button
-            onClick={() => {
-              const result = createArea({ name });
-              if (result.ok) {
-                setName("");
-                onOpenChange(false);
-              }
-            }}
-            variant="primary"
-          >
+          <Button type="submit" variant="primary">
             {t("area.create.confirm")}
           </Button>
         </div>
-      </div>
+      </form>
     </Dialog>
   );
 }

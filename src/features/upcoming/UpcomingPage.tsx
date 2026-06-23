@@ -87,7 +87,10 @@ function groupByPlanningDate(rows: LocalItemRow[]): [string, LocalItemRow[]][] {
   const groups = new Map<string, LocalItemRow[]>();
 
   for (const row of rows) {
-    const date = row.item_type === "date_task" ? row.scheduled_date : row.planned_work_date;
+    const date =
+      row.item_type === "date_task"
+        ? row.scheduled_date
+        : (row.planned_work_date ?? row.deadline_date);
 
     if (date === null) {
       continue;

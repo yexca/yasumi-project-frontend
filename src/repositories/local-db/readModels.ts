@@ -162,15 +162,11 @@ export function queryInboxRows(items: LocalItemRow[]): LocalItemRow[] {
 export function queryUpcomingRows(items: LocalItemRow[], today: DateOnly): LocalItemRow[] {
   return items
     .filter((item) => isVisibleInNormalPlanning(item))
-    .filter(
-      (item) =>
-        (item.item_type === "date_task" &&
-          item.scheduled_date !== null &&
-          item.scheduled_date > today) ||
-        (item.item_type === "deadline_task" &&
-          item.planned_work_date !== null &&
-          item.planned_work_date > today),
-    )
+    .filter((item) => {
+      const planningDate = getPlanningDate(item);
+
+      return planningDate !== null && planningDate >= today;
+    })
     .sort(
       (left, right) =>
         compareDateOnly(getPlanningDate(left), getPlanningDate(right)) ||
@@ -379,7 +375,11 @@ function getPlanningDate(item: LocalItemRow): DateOnly | null {
     return item.scheduled_date;
   }
 
-  return item.planned_work_date;
+  if (item.item_type === "deadline_task") {
+    return item.planned_work_date ?? item.deadline_date;
+  }
+
+  return null;
 }
 
 function sortByCreatedAt(left: LocalItemRow, right: LocalItemRow): number {

@@ -26,6 +26,7 @@ type InlineQuickAddType = ItemType | "auto" | "repeat";
 export type InlineQuickAddDefaultCapture = {
   areaId?: string | null;
   deadlineDate?: DateOnly | null;
+  plannedWorkDate?: DateOnly | null;
   preserveTaskType?: boolean;
   scheduledDate?: DateOnly | null;
   taskType?: Exclude<InlineQuickAddType, "repeat">;
@@ -47,7 +48,11 @@ export function InlineQuickAdd({ areas, defaultCapture }: InlineQuickAddProps) {
   const [typeSelection, setTypeSelection] = useState<InlineQuickAddType | null>(null);
   const [areaId, setAreaId] = useState(defaultAreaId);
   const [dateValue, setDateValue] = useState(defaultDate);
+  const [plannedWorkDateValue, setPlannedWorkDateValue] = useState(
+    defaultCapture?.plannedWorkDate ?? "",
+  );
   const [dateTouched, setDateTouched] = useState(false);
+  const [plannedWorkDateTouched, setPlannedWorkDateTouched] = useState(false);
 
   const preview = useMemo(
     () =>
@@ -75,25 +80,37 @@ export function InlineQuickAdd({ areas, defaultCapture }: InlineQuickAddProps) {
             : defaultCapture?.deadlineDate) ??
           dateValue)
       : null;
+  const resolvedPlannedWorkDate =
+    effectiveType === "deadline_task"
+      ? plannedWorkDateTouched
+        ? plannedWorkDateValue
+        : (defaultCapture?.plannedWorkDate ?? plannedWorkDateValue)
+      : null;
   const selectedArea = areaId ? areas.find((area) => area.id === areaId) : undefined;
   const canSave =
     sourceText.trim().length > 0 &&
     effectiveType !== "repeat" &&
     (effectiveType === "date_task" || effectiveType === "deadline_task"
-      ? isDateOnly(resolvedDate ?? "")
+      ? isDateOnly(resolvedDate ?? "") &&
+        (effectiveType !== "deadline_task" ||
+          resolvedPlannedWorkDate === "" ||
+          isDateOnly(resolvedPlannedWorkDate ?? ""))
       : true);
 
   function chooseType(nextType: InlineQuickAddType | null) {
     setTypeSelection(nextType);
     setDateTouched(false);
+    setPlannedWorkDateTouched(false);
 
     if (nextType === "date_task") {
       setDateValue(defaultCapture?.scheduledDate ?? data.today);
       setDateTouched(true);
+      setPlannedWorkDateValue("");
     }
 
     if (nextType === "deadline_task") {
       setDateValue(defaultCapture?.deadlineDate ?? data.today);
+      setPlannedWorkDateValue(defaultCapture?.plannedWorkDate ?? "");
       setDateTouched(true);
     }
   }
@@ -110,15 +127,19 @@ export function InlineQuickAdd({ areas, defaultCapture }: InlineQuickAddProps) {
         effectiveType === "date_task" && !dateTouched
           ? (defaultCapture?.scheduledDate ?? null)
           : null,
+      plannedWorkDate:
+        effectiveType === "deadline_task" ? toDateOnly(resolvedPlannedWorkDate) : null,
       sourceText,
       scheduledDate: effectiveType === "date_task" && dateTouched ? toDateOnly(resolvedDate) : null,
       targetItemType: effectiveType,
     });
     setSourceText("");
     setDateTouched(false);
+    setPlannedWorkDateTouched(false);
     setTypeSelection(null);
     setAreaId(defaultAreaId);
     setDateValue(defaultDate);
+    setPlannedWorkDateValue(defaultCapture?.plannedWorkDate ?? "");
   }
 
   return (
@@ -139,20 +160,47 @@ export function InlineQuickAdd({ areas, defaultCapture }: InlineQuickAddProps) {
           value={sourceText}
         />
         {effectiveType === "date_task" || effectiveType === "deadline_task" ? (
-          <input
-            aria-label={
-              effectiveType === "deadline_task"
-                ? t("item.field.deadlineDate")
-                : t("item.field.scheduledDate")
-            }
-            className={styles.dateInput}
-            onChange={(event) => {
-              setDateTouched(true);
-              setDateValue(event.target.value);
-            }}
-            type="date"
-            value={resolvedDate ?? ""}
-          />
+          <span
+            className={styles.dateGroup}
+            data-mode={effectiveType === "deadline_task" ? "deadline" : "single"}
+          >
+            {effectiveType === "deadline_task" ? (
+              <label className={styles.dateField}>
+                <span>{t("item.meta.work")}</span>
+                <input
+                  aria-label={t("item.field.plannedWorkDate")}
+                  className={styles.dateInput}
+                  onChange={(event) => {
+                    setPlannedWorkDateTouched(true);
+                    setPlannedWorkDateValue(event.target.value);
+                  }}
+                  type="date"
+                  value={resolvedPlannedWorkDate ?? ""}
+                />
+              </label>
+            ) : null}
+            <label className={styles.dateField}>
+              <span>
+                {effectiveType === "deadline_task"
+                  ? t("item.meta.deadline")
+                  : t("item.field.scheduledDate")}
+              </span>
+              <input
+                aria-label={
+                  effectiveType === "deadline_task"
+                    ? t("item.field.deadlineDate")
+                    : t("item.field.scheduledDate")
+                }
+                className={styles.dateInput}
+                onChange={(event) => {
+                  setDateTouched(true);
+                  setDateValue(event.target.value);
+                }}
+                type="date"
+                value={resolvedDate ?? ""}
+              />
+            </label>
+          </span>
         ) : null}
         <Menu
           trigger={
@@ -236,7 +284,20 @@ export function InlineQuickAdd({ areas, defaultCapture }: InlineQuickAddProps) {
       </form>
       <div className={styles.summary} aria-live="polite">
         <span className={styles.pill}>{t(inlineTypeLabelKey(effectiveType))}</span>
-        {resolvedDate ? <span className={styles.pill}>{resolvedDate}</span> : null}
+        {resolvedPlannedWorkDate ? (
+          <span className={styles.pill}>
+            <span className={styles.pillLabel}>{t("item.meta.work")}</span>
+            {resolvedPlannedWorkDate}
+          </span>
+        ) : null}
+        {resolvedDate ? (
+          <span className={styles.pill}>
+            {effectiveType === "deadline_task" ? (
+              <span className={styles.pillLabel}>{t("item.meta.deadline")}</span>
+            ) : null}
+            {resolvedDate}
+          </span>
+        ) : null}
         {selectedArea ? <span className={styles.pill}>{selectedArea.name}</span> : null}
       </div>
     </section>

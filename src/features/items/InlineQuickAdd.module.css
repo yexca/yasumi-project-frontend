@@ -33,8 +33,29 @@
   outline: none;
 }
 
-.dateInput {
+.dateGroup {
+  display: grid;
   width: 132px;
+  align-items: center;
+  gap: 4px;
+}
+
+.dateGroup[data-mode="deadline"] {
+  width: 248px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.dateField {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dateInput {
+  width: 100%;
   height: 34px;
   border: 1px solid var(--color-border-default);
   border-radius: var(--radius-control);
@@ -76,6 +97,7 @@
   display: inline-flex;
   max-width: 100%;
   align-items: center;
+  gap: 4px;
   border-radius: 999px;
   background: var(--color-surface-subtle);
   color: var(--color-text-secondary);
@@ -84,12 +106,22 @@
   font-weight: 650;
 }
 
+.pillLabel {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
 @media (max-width: 640px) {
   .form {
-    grid-template-columns: minmax(0, 1fr) 118px auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto auto;
   }
 
-  .dateInput {
+  .dateGroup {
     width: 118px;
+  }
+
+  .dateGroup[data-mode="deadline"] {
+    width: 232px;
   }
 }

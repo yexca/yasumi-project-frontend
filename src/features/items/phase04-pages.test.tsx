@@ -88,6 +88,43 @@ describe("phase 04 pages and action surfaces", () => {
     expect(within(detail).getByText("2026-07-01")).toBeInTheDocument();
   });
 
+  it("allows Quick Add to create a task with Enter", async () => {
+    cleanup();
+    window.history.pushState({}, "", "/inbox");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Inbox", level: 2 });
+    await user.click(firstButton("Quick Add"));
+    const dialog = screen.getByRole("dialog", { name: "Quick Add" });
+    await user.type(within(dialog).getByLabelText("Task name"), "Capture by keyboard{enter}");
+
+    expect(await screen.findByText("Capture by keyboard")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Quick Add" })).not.toBeInTheDocument();
+  });
+
+  it("lets inline deadline Quick Add set a planned work date", async () => {
+    cleanup();
+    window.history.pushState({}, "", "/deadlines");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Deadlines", level: 2 });
+    await user.type(screen.getByLabelText("Task title"), "File quarterly paperwork");
+    await user.clear(screen.getByLabelText("Planned work date"));
+    await user.type(screen.getByLabelText("Planned work date"), "2026-06-20");
+    await user.clear(screen.getByLabelText("Deadline date"));
+    await user.type(screen.getByLabelText("Deadline date"), "2026-06-25");
+    await user.keyboard("{enter}");
+
+    expect(await screen.findByText("File quarterly paperwork")).toBeInTheDocument();
+    expect(screen.getByText("Work 2026-06-20 · Deadline 2026-06-25")).toBeInTheDocument();
+  });
+
   it("allows Inbox completion while detail stays editable", async () => {
     cleanup();
     window.history.pushState({}, "", "/inbox");
@@ -174,6 +211,23 @@ describe("phase 04 pages and action surfaces", () => {
     await user.click(within(dialog).getByRole("button", { name: "Create area" }));
 
     expect(await screen.findByRole("heading", { name: "Errands", level: 3 })).toBeInTheDocument();
+  });
+
+  it("creates a new area with Enter", async () => {
+    cleanup();
+    window.history.pushState({}, "", "/areas");
+    seedAuthSession();
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await screen.findByRole("heading", { name: "Areas", level: 2 });
+    await user.click(screen.getByRole("button", { name: "Create area" }));
+    const dialog = screen.getByRole("dialog", { name: "Create area" });
+    await user.type(within(dialog).getByRole("textbox", { name: /Area/ }), "Reading{enter}");
+
+    expect(await screen.findByRole("heading", { name: "Reading", level: 3 })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Create area" })).not.toBeInTheDocument();
   });
 
   it("includes synced settings and local visual settings on Settings", async () => {
